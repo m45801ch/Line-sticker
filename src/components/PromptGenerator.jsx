@@ -2,29 +2,54 @@ import React, { useState, useRef } from 'react';
 import { Copy, Sparkles, Check, Edit3, RotateCcw } from 'lucide-react';
 
 const artStyleOptions = [
-  { id: 'cute-2d', name: '可愛、活潑、2D平面風格' },
-  { id: 'vector', name: '向量插畫 (Vector)' },
-  { id: 'watercolor', name: '水彩風 (Watercolor)' },
-  { id: '3d-render', name: '3D 算圖 (3D Render)' },
-  { id: 'minimalist', name: '簡約幾何 (Minimalist)' },
-  { id: 'retro', name: '復古像素 (Retro Pixel)' },
+  { id: 'original', name: '原圖片風格' },
+  { id: 'manga-style', name: '日漫畫風 (指定漫畫家)' },
+  { id: 'cute-chibi', name: '日系精緻 Q 版 (Chibi)' },
+  { id: 'cute-2d', name: '可愛活潑 2D 平面' },
+  { id: 'watercolor', name: '溫暖水彩風' },
+  { id: 'crayon', name: '柔和蠟筆插畫' },
+  { id: 'vector', name: '簡約向量插畫' },
+  { id: '3d-render', name: '精緻 3D 算圖' },
+  { id: 'minimalist', name: '極簡幾何風格' },
+  { id: 'ink-wash', name: '現代創意墨繪' },
+  { id: 'pop-art', name: '鮮豔美式波普' },
+  { id: 'pencil', name: '鉛筆手寫塗鴉' },
+  { id: 'retro', name: '復古像素 (Retro)' },
   { id: 'custom', name: '自訂畫風...' },
+];
+
+const mangaArtistOptions = [
+  "手塚治虫", "鳥山明", "藤子·F·不二雄", "井上雄彥", "尾田榮一郎",
+  "岸本齊史", "久保帶人", "荒木飛呂彥", "冨樫義博", "三浦建太郎",
+  "浦澤直樹", "大友克洋", "高橋留美子", "安達充", "青山剛昌",
+  "車田正美", "荒川弘", "諫山創", "古館春一", "吾峠呼世晴",
+  "芥見下下", "藤本樹", "遠藤達哉", "堀越耕平", "村田雄介",
+  "小畑健", "原哲夫", "北條司", "弘兼憲史", "本島幸久",
+  "貞本義行", "桂正和", "和月伸宏", "許斐剛", "鈴木央",
+  "真島浩", "大暮維人", "矢澤愛", "羽海野千花", "CLAMP",
+  "武內直子", "種村有菜", "綠川幸", "荒木伸吾", "板垣惠介",
+  "幸村誠", "貳瓶勉", "伊藤潤二", "水木茂", "楳圖一雄"
 ];
 
 const themeOptions = [
   { id: 'common', name: '常用語', words: '早安、晚安、謝謝、不客氣、對不起、沒問題、好的、收到、拜託、辛苦了、OK、等等' },
-  { id: 'greeting', name: '打招呼', words: '你好、嗨、哈囉、掰掰、再見、嘿嘿、安安、午安、晚安、好久不見、想你、最近好嗎' },
+  { id: 'greeting', name: '打招呼', words: '你好、嗨、哈囉、掰掰、再見、嘿嘿、安安、午安、晚安、想你、最近好嗎' },
   { id: 'emotion', name: '情緒表達', words: '開心、傷心、生氣、驚訝、無言、崩潰、感動、好煩、超爽、嚇死、放空、厭世' },
   { id: 'work', name: '職場用語', words: '收到、了解、辛苦了、加油、下班、開會、忙死了、等我、幫幫忙、做完了、休息、上班中' },
   { id: 'love', name: '愛情甜蜜', words: '愛你、想你、抱抱、親親、寶貝、老公、老婆、晚安❤、早安❤、在幹嘛、吃了嗎、回來了' },
   { id: 'funny', name: '搞笑耍廢', words: '哈哈哈、笑死、傻眼、母湯、躺平、不想動、好餓、吃土、救命、神煩、滾、隨便' },
+  { id: 'daily', name: '日常起居', words: '洗澡去、出門了、回家了、想睡覺、滑手機、看電視、聽音樂、刷牙中、在路上了、快到了' },
+  { id: 'cheer', name: '擁抱加油', words: '加油、棒棒噠、你可以的、讚喔、帥氣、真厲害、相信你、有你真好、支持你、不放棄' },
+  { id: 'food', name: '吃貨人生', words: '好餓、想吃肉、宵夜時間、美味、大餐、罪惡感、減肥明天開始、想喝珍奶、真香、開飯了' },
+  { id: 'shopping', name: '購物剁手', words: '買買買、剁手、下單了、已轉帳、免運嗎、超商取貨、這必買、好貴、破產了、包色' },
+  { id: 'positive', name: '正能量語錄', words: '感恩、感動、幸福、未來可期、活在當下、平平安安、元氣滿滿、微笑、每一天都美好、平安喜樂' },
   { id: 'custom', name: '自行輸入...' },
 ];
 
 const borderStyleOptions = [
-  { id: 'thick-white', name: '粗白框', value: '粗白色外框' },
-  { id: 'thin-white', name: '細白框', value: '細白色外框' },
-  { id: 'no-border', name: '無白框', value: '無外框' },
+  { id: 'no-border', name: '無白邊', value: '無白邊' },
+  { id: 'thick-white', name: '粗白邊', value: '粗白邊' },
+  { id: 'thin-white', name: '細白邊', value: '細白邊' },
 ];
 
 const fontStyleOptions = [
@@ -58,57 +83,52 @@ const fontColorOptions = [
 ];
 
 const DEFAULT_PROMPT_TEMPLATE = `🚀 LINE 12格角色貼圖生成 Prompt
-
 請參考上傳圖片中的角色，生成一張包含 12 格不同動作的角色貼圖合集。
-
 【角色一致性要求】
 必須完全維持原上傳圖角色之髮型、五官、服裝、顏色與比例
 不可改變角色設定或重新設計造型
-
-【畫風設定】
+【畫風設定】:
 {artStyle}
-
-【角色與文字】
+【角色與文字白邊設定】:
 {borderStyle}
-
 【背景】必須為純綠色 #00FF00（無漸層、無雜點）
-
 【排版與尺寸】
 總尺寸：2560 × 1664 px
 分割為橫版4 × 3 排列，共12格
 每張貼圖約 0.2cm Padding
 遠景與中景、近景交互隨機搭配
 必須包含正面、側面與俯視角、誇張視角,各種不同角度
-
 【文字規範】:
 語言：台灣繁體中文(不要重複)
-
 【文字內容包含】：
 {words}
-
 【字型風格】：
 {fontStyle}
-
 【字體顏色】：
 {fontColor}
-
 【字體樣式限制】：
 禁止使用任何綠色色系
 禁止使用表情符號
 不可重點角色
 字體顏色不支援綠色#00FF00（純綠色）
-
 【表情與動作設計】
 每格皆為不同表情與動作
 情緒及動作須與文字語意描述
-
 【輸出格式】
 僅輸出一張橫版 4 × 3 大圖
 背景統一為純綠色 #00FF00`;
 
+const SIMPLE_PROMPT_TEMPLATE = `【畫風設定】: {artStyle}
+【角色與文字白邊設定】: {borderStyle}
+【字型風格】： {fontStyle}
+【字體顏色】： {fontColor}
+【主題】: {themeName}`;
+
+
 const PromptGenerator = () => {
   const [artStyleId, setArtStyleId] = useState(artStyleOptions[0].id);
   const [customArtStyle, setCustomArtStyle] = useState('');
+  const [mangaArtist, setMangaArtist] = useState(mangaArtistOptions[0]);
 
   const [themeId, setThemeId] = useState(themeOptions[0].id);
   const [customThemeWords, setCustomThemeWords] = useState('');
@@ -119,12 +139,14 @@ const PromptGenerator = () => {
 
   const [promptTemplate, setPromptTemplate] = useState(DEFAULT_PROMPT_TEMPLATE);
   const [isEditingTemplate, setIsEditingTemplate] = useState(false);
+  const [isSimpleMode, setIsSimpleMode] = useState(false);
 
   const [copied, setCopied] = useState(false);
   const promptRef = useRef(null);
 
   const getArtStyleName = () => {
     if (artStyleId === 'custom') return customArtStyle || '可愛、活潑、2D平面風格';
+    if (artStyleId === 'manga-style') return `${mangaArtist}繪畫風格`;
     return artStyleOptions.find(s => s.id === artStyleId)?.name || '可愛、活潑、2D平面風格';
   };
 
@@ -139,7 +161,7 @@ const PromptGenerator = () => {
   };
 
   const getBorderStyleValue = () => {
-    return borderStyleOptions.find(b => b.id === borderStyleId)?.value || '粗白色外框';
+    return borderStyleOptions.find(b => b.id === borderStyleId)?.value || '無白邊';
   };
 
   const getFontStyleName = () => {
@@ -151,21 +173,25 @@ const PromptGenerator = () => {
   };
 
   const buildPrompt = () => {
-    let result = promptTemplate;
+    let result = isSimpleMode ? SIMPLE_PROMPT_TEMPLATE : promptTemplate;
     result = result.replace(/{artStyle}/g, getArtStyleName());
     result = result.replace(/{borderStyle}/g, getBorderStyleValue());
     result = result.replace(/{words}/g, getThemeWords());
+    result = result.replace(/{themeName}/g, getThemeName());
     result = result.replace(/{fontStyle}/g, getFontStyleName());
     result = result.replace(/{fontColor}/g, getFontColorName());
     return result;
   };
 
-  const generatedPrompt = buildPrompt();
-
   const handleResetTemplate = () => {
     setPromptTemplate(DEFAULT_PROMPT_TEMPLATE);
+    setIsSimpleMode(false);
     setIsEditingTemplate(false);
   };
+
+  const generatedPrompt = buildPrompt();
+
+
 
   const copyToClipboard = async (e) => {
     e.preventDefault();
@@ -194,41 +220,40 @@ const PromptGenerator = () => {
     }
   };
 
-  // Render prompt with colored highlights
+  // Render prompt with multi-colored highlights
   const renderPromptWithHighlights = () => {
     const plain = generatedPrompt;
-    let parts = [];
-    let remaining = plain;
-
-    // Only highlight these extracted dynamic strings if they actually match in the text
-    const stringsToHighlight = [
+    const themeName = getThemeName();
+    const dynamicValues = [
       getArtStyleName(),
       getBorderStyleValue(),
       getThemeWords(),
       getFontStyleName(),
-      getFontColorName()
-    ].filter(Boolean); // removing empty strings just in case
+      getFontColorName(),
+      themeName,
+    ].filter(Boolean);
 
-    stringsToHighlight.forEach((str) => {
-      const idx = remaining.indexOf(str);
-      if (idx !== -1) {
-        if (idx > 0) parts.push({ text: remaining.slice(0, idx), highlight: false });
-        parts.push({ text: str, highlight: true });
-        remaining = remaining.slice(idx + str.length);
+    const escapedValues = dynamicValues.map(v => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    const regex = new RegExp(`(LINE 12格角色貼圖生成 Prompt|【[^】]*】|${escapedValues})`, 'g');
+
+    const parts = plain.split(regex);
+
+    return parts.map((part, i) => {
+      if (!part) return null;
+      if (part === 'LINE 12格角色貼圖生成 Prompt') {
+        return <span key={i} style={{ color: '#00e676', fontWeight: 700 }}>{part}</span>;
       }
+      if (part.startsWith('【') && part.endsWith('】')) {
+        return <span key={i} style={{ color: '#FFFFFF', fontWeight: 700 }}>{part}</span>;
+      }
+      if (part === themeName) {
+        return <span key={i} style={{ color: '#ffb400', fontWeight: 600 }}>{part}</span>;
+      }
+      if (dynamicValues.includes(part)) {
+        return <span key={i} style={{ color: '#ffcc00', fontWeight: 600 }}>{part}</span>;
+      }
+      return <span key={i}>{part}</span>;
     });
-
-    if (remaining) {
-      parts.push({ text: remaining, highlight: false });
-    }
-
-    return parts.map((part, i) =>
-      part.highlight ? (
-        <span key={i} style={{ color: '#ffcc00', fontWeight: 600 }}>{part.text}</span>
-      ) : (
-        <span key={i}>{part.text}</span>
-      )
-    );
   };
 
   return (
@@ -264,6 +289,15 @@ const PromptGenerator = () => {
             {artStyleOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
+
+        {artStyleId === 'manga-style' && (
+          <div className="control-group">
+            <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>選擇漫畫家</label>
+            <select className="select-input" value={mangaArtist} onChange={(e) => setMangaArtist(e.target.value)}>
+              {mangaArtistOptions.map(name => <option key={name} value={name}>{name}</option>)}
+            </select>
+          </div>
+        )}
 
         {artStyleId === 'custom' && (
           <div className="control-group">
@@ -352,6 +386,24 @@ const PromptGenerator = () => {
               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
             >
               <RotateCcw size={14} /> 還原預設值
+            </button>
+            <button
+              onClick={() => { setIsSimpleMode(m => !m); setIsEditingTemplate(false); }}
+              style={{
+                background: isSimpleMode ? 'rgba(255, 180, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                border: `1px solid ${isSimpleMode ? '#ffb400' : 'transparent'}`,
+                color: isSimpleMode ? '#ffb400' : 'var(--text-secondary)',
+                padding: '0.4rem 0.8rem',
+                borderRadius: '0.25rem',
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                transition: 'all 0.2s'
+              }}
+            >
+              ⚡ {isSimpleMode ? '簡化模式 ON' : '簡化模式'}
             </button>
           </div>
         </div>

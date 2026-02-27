@@ -1,16 +1,55 @@
-# React + Vite
+# 🚀 LINE 貼圖助手 (Line Sticker Assistant)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+一個專為生成與快速處理 LINE 貼圖設計的 AI 工具。透過此工具，你可以輕鬆將 AI 生成的 12 格角色大圖，自動去背、裁切並打包成符合 LINE 上架規格的 ZIP 壓縮檔。
 
-Currently, two official plugins are available:
+## ✨ 主要功能
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 1. 🎨 AI 提示詞生成器 (Step 1)
+- 專利級的貼圖 Prompt 結構，確保角色一致性與 4x3 排版。
+- 可自訂畫風、白邊、表情主題與字型顏色。
+- 內建台灣繁體中文常用語，一鍵複製即可貼入 AI 繪圖工具 (如 Midjourney, DALL-E 3)。
 
-## React Compiler
+### 2. ✂️ 智慧型去背與裁切 (Step 2)
+- **色度鍵 (Chroma Key) 去背**：精準移除指定背景色 (預設純綠色 #00FF00)。
+- **進階溢色處理 (Despill)**：
+    - 採用專用演算法消除綠幕邊緣的綠色反光。
+    - **強度拉桿**：可自由調整溢色去除的強弱，完美還原角色邊緣。
+- **12 格自動裁切**：支援手動縮放與位移，確保每一格內容都在正中心。
+- **即時進度顯示**：在處理高解析度大圖時，提供清晰的處理狀態指示。
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 3. 📦 一鍵打包下載 (Step 3)
+- 自動生成符合 LINE 規格的尺寸：
+    - **Stickers (12張)**：370 x 320 px
+    - **Main (主要圖)**：240 x 240 px
+    - **Tab (標籤圖)**：96 x 74 px
+- 下載完成後自動跳轉，優化連續處理多組貼圖的流程。
 
-## Expanding the ESLint configuration
+## 🛠️ 技術棧
+- **Frontend**: React + Vite
+- **Styling**: Vanilla CSS (現代玻璃擬態風格)
+- **Processing**: HTML5 Canvas API
+- **ZIP Generation**: JSZip
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🚀 快速上手
+
+1. **安裝依賴**
+   ```bash
+   npm install
+   ```
+
+2. **啟動開發伺服器**
+   ```bash
+   npm run dev
+   ```
+
+3. **操作流程**
+   - **Step 1**: 設定畫風與文字，點擊「一鍵複製」取得 Prompt。
+   - **Step 2**: 上傳 AI 生成好的 4x3 大圖，調整「裁切縮放」後，按「執行開始 (開始去背)」。
+   - **Step 3**: 在預覽區選擇主要的 (Main) 與標籤頁 (Tab) 圖示，點擊前往打包下載。
+
+## 📝 注意事項
+- 為了達到最佳去背效果，請確保 AI 生成圖的背景為純綠色 (`#00FF00`)。
+- 若邊緣仍有些微綠色，請調整「溢色去除強度」滑桿至滿意為止。
+
+---
+© 2026 LINE 貼圖助手 - 快速製作您的個人化 LINE 貼圖組
