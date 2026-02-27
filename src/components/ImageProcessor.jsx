@@ -15,6 +15,8 @@ const ImageProcessor = ({ onProcessed, onGoToStep3 }) => {
     const [smoothness, setSmoothness] = useState(5);
     const [enableSmartRemoval, setEnableSmartRemoval] = useState(true);
     const [enableDespill, setEnableDespill] = useState(true);
+    const [despillStrength, setDespillStrength] = useState(80);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     // Interactive Grid settings
     const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -58,8 +60,14 @@ const ImageProcessor = ({ onProcessed, onGoToStep3 }) => {
         reader.readAsDataURL(file);
     };
 
-    const executeProcess = () => {
+    const executeProcess = async () => {
         if (!imageObj) return;
+
+        setIsProcessing(true);
+        setStems([]);
+
+        // Use timeout to allow UI to render the processing state
+        await new Promise(resolve => setTimeout(resolve, 50));
 
         const cols = 4;
         const rows = 3;
@@ -127,8 +135,10 @@ const ImageProcessor = ({ onProcessed, onGoToStep3 }) => {
                         // Despill: reduce green spill on partially transparent / opaque pixels
                         if (enableDespill && data[i + 3] > 0) {
                             const maxRB = Math.max(rVal, bVal);
-                            if (gVal > maxRB + 20) {
-                                data[i + 1] = maxRB + 20;
+                            const despillFactor = despillStrength / 100;
+                            if (gVal > maxRB) {
+                                const spill = gVal - maxRB;
+                                data[i + 1] = Math.round(gVal - (spill * despillFactor));
                             }
                         }
                     }
@@ -139,6 +149,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep3 }) => {
             }
         }
         setStems(newStems);
+        setIsProcessing(false);
     };
 
     const hexToRgb = (hex) => {
@@ -274,6 +285,17 @@ const ImageProcessor = ({ onProcessed, onGoToStep3 }) => {
                                 onChange={(e) => setEnableDespill(e.target.checked)}
                             />
                         </div>
+                        {enableDespill && (
+                            <div className="control-field" style={{ marginBottom: '1rem', marginTop: '-0.5rem', paddingLeft: '0.5rem', borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
+                                <label style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+                                    溢色去除強度 <span>{despillStrength}%</span>
+                                </label>
+                                <input
+                                    type="range" min="0" max="100" value={despillStrength}
+                                    onChange={(e) => setDespillStrength(parseInt(e.target.value))}
+                                />
+                            </div>
+                        )}
 
                         <div style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginBottom: '1rem' }}>
                             去背參數設定
@@ -324,10 +346,10 @@ const ImageProcessor = ({ onProcessed, onGoToStep3 }) => {
                     {/* Action Buttons */}
                     {sourceImage && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            <button className="button success" style={{ width: '100%', padding: '0.75rem' }} onClick={executeProcess}>
-                                <Sparkles size={18} /> 執行開始 (開始去背)
+                            <button className="button success" style={{ width: '100%', padding: '0.75rem' }} onClick={executeProcess} disabled={isProcessing}>
+                                {isProcessing ? <span className="loader">處理中...</span> : <><Sparkles size={18} /> 執行開始 (開始去背)</>}
                             </button>
-                            <button className="button secondary" style={{ width: '100%' }} onClick={() => { setSourceImage(null); setImageObj(null); setStems([]); }}>
+                            <button className="button secondary" style={{ width: '100%' }} onClick={() => { setSourceImage(null); setImageObj(null); setStems([]); }} disabled={isProcessing}>
                                 重新上傳
                             </button>
                         </div>
@@ -376,7 +398,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep3 }) => {
                                     <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, fontFamily: 'monospace', padding: '0.25rem', background: 'rgba(0,0,0,0.3)', borderRadius: '0.25rem' }}>
                                         {fileName}
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                         <button
                                             onClick={() => setMainIdx(idx)}
                                             style={{
@@ -388,7 +410,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep3 }) => {
                                                 transition: 'all 0.2s'
                                             }}
                                         >
-                                            <Star size={12} fill={isMain ? 'currentColor' : 'none'} /> Main
+                                            <Star size={12} fill={isMain ? 'currentColor' : 'none'} /> 主要的 (Main)
                                         </button>
                                         <button
                                             onClick={() => setTabIdx(idx)}
@@ -401,7 +423,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep3 }) => {
                                                 transition: 'all 0.2s'
                                             }}
                                         >
-                                            <Tag size={12} fill={isTab ? 'currentColor' : 'none'} /> Tab
+                                            <Tag size={12} fill={isTab ? 'currentColor' : 'none'} /> 標籤頁 (Tab)
                                         </button>
                                     </div>
                                 </div>

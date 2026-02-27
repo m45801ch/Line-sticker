@@ -52,12 +52,18 @@ const Exporter = ({ data, onGoToStep2 }) => {
         }
 
         const content = await zip.generateAsync({ type: "blob" });
+        const url = URL.createObjectURL(content);
         const link = document.createElement("a");
-        link.href = URL.createObjectURL(content);
+        link.href = url;
         link.download = `line-stickers-${new Date().getTime()}.zip`;
+        link.style.display = 'none';
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
 
         setIsExporting(false);
+        onGoToStep2(); // 自動跳轉回 Step 2
     };
 
     if (!data || !data.stems || data.stems.length === 0) {

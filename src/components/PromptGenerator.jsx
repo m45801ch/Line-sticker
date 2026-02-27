@@ -167,25 +167,31 @@ const PromptGenerator = () => {
     setIsEditingTemplate(false);
   };
 
-  const copyToClipboard = (e) => {
+  const copyToClipboard = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const textarea = document.createElement('textarea');
-    textarea.value = generatedPrompt;
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    textarea.style.top = '-9999px';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
     try {
-      document.execCommand('copy');
+      await navigator.clipboard.writeText(generatedPrompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.warn('Copy failed', err);
+      console.warn('Clipboard write failed, using fallback', err);
+      const textarea = document.createElement('textarea');
+      textarea.value = generatedPrompt;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      textarea.style.top = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+      } catch (err2) {
+        console.warn('Fallback copy failed', err2);
+      }
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
-    document.body.removeChild(textarea);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   // Render prompt with colored highlights
