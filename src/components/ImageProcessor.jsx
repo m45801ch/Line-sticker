@@ -12,10 +12,10 @@ const ImageProcessor = ({ onProcessed, onGoToStep3 }) => {
     // Background removal settings
     const [bgColor, setBgColor] = useState('#00FF00');
     const [tolerance, setTolerance] = useState(60);
-    const [smoothness, setSmoothness] = useState(5);
+    const [smoothness, setSmoothness] = useState(20);
     const [enableSmartRemoval, setEnableSmartRemoval] = useState(true);
     const [enableDespill, setEnableDespill] = useState(true);
-    const [despillStrength, setDespillStrength] = useState(80);
+    const [despillStrength, setDespillStrength] = useState(100);
     const [isProcessing, setIsProcessing] = useState(false);
 
     // Interactive Grid settings
@@ -125,8 +125,9 @@ const ImageProcessor = ({ onProcessed, onGoToStep3 }) => {
 
                         if (dist < tol) {
                             data[i + 3] = 0; // Fully transparent
-                        } else if (smoothness > 0 && dist < tol + smoothness) {
-                            const featherAlpha = Math.round(((dist - tol) / smoothness) * 255);
+                        } else if (smoothness > 0 && dist < tol + smoothness * 2) {
+                            // Effective feather range doubled for stronger edge blending
+                            const featherAlpha = Math.round(((dist - tol) / (smoothness * 2)) * 255);
                             if (featherAlpha < data[i + 3]) {
                                 data[i + 3] = featherAlpha;
                             }
@@ -135,10 +136,21 @@ const ImageProcessor = ({ onProcessed, onGoToStep3 }) => {
                         // Despill: reduce green spill on partially transparent / opaque pixels
                         if (enableDespill && data[i + 3] > 0) {
                             const maxRB = Math.max(rVal, bVal);
-                            const despillFactor = despillStrength / 100;
                             if (gVal > maxRB) {
                                 const spill = gVal - maxRB;
-                                data[i + 1] = Math.round(gVal - (spill * despillFactor));
+                                if (despillStrength <= 100) {
+                                    // Standard linear despill
+                                    const factor = despillStrength / 100;
+                                    data[i + 1] = Math.round(gVal - spill * factor);
+                                } else {
+                                    // Phase 1: full base despill (100%)
+                                    const baseG = Math.round(gVal - spill);
+                                    // Phase 2: enhanced suppression on residual chrominance
+                                    const extraFactor = (despillStrength - 100) / 100;
+                                    // Push green further toward average of R and B
+                                    const targetG = Math.round((rVal + bVal) / 2);
+                                    data[i + 1] = Math.round(baseG - (baseG - targetG) * extraFactor);
+                                }
                             }
                         }
                     }
@@ -288,10 +300,10 @@ const ImageProcessor = ({ onProcessed, onGoToStep3 }) => {
                         {enableDespill && (
                             <div className="control-field" style={{ marginBottom: '1rem', marginTop: '-0.5rem', paddingLeft: '0.5rem', borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
                                 <label style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-                                    溢色去除強度 <span>{despillStrength}%</span>
+                                    溢色去除強度 <span>{despillStrength}%{despillStrength > 100 ? ' ⚡強化' : ''}</span>
                                 </label>
                                 <input
-                                    type="range" min="0" max="100" value={despillStrength}
+                                    type="range" min="0" max="200" value={despillStrength}
                                     onChange={(e) => setDespillStrength(parseInt(e.target.value))}
                                 />
                             </div>

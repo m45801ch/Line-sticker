@@ -7,6 +7,54 @@ const Exporter = ({ data, onGoToStep2 }) => {
     const [isExporting, setIsExporting] = useState(false);
     const startIndex = data?.startIndex || 1;
 
+    // Unsharp Mask sharpening — preserves transparency
+    const sharpenCanvas = (canvas, amount = 0.6) => {
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const w = canvas.width;
+        const h = canvas.height;
+        const src = ctx.getImageData(0, 0, w, h);
+        const dst = ctx.createImageData(w, h);
+        const s = src.data;
+        const d = dst.data;
+
+        // Simple 3×3 sharpening kernel (Laplacian-based unsharp mask)
+        // kernel = identity + amount * laplacian
+        for (let y = 1; y < h - 1; y++) {
+            for (let x = 1; x < w - 1; x++) {
+                const idx = (y * w + x) * 4;
+                // Skip fully transparent pixels
+                if (s[idx + 3] === 0) {
+                    d[idx] = s[idx];
+                    d[idx + 1] = s[idx + 1];
+                    d[idx + 2] = s[idx + 2];
+                    d[idx + 3] = s[idx + 3];
+                    continue;
+                }
+                for (let c = 0; c < 3; c++) {
+                    const center = s[idx + c];
+                    const neighbors =
+                        s[((y - 1) * w + x) * 4 + c] +
+                        s[((y + 1) * w + x) * 4 + c] +
+                        s[(y * w + (x - 1)) * 4 + c] +
+                        s[(y * w + (x + 1)) * 4 + c];
+                    // Unsharp mask: output = center + amount * (center - blur)
+                    const blur = neighbors / 4;
+                    d[idx + c] = Math.min(255, Math.max(0, Math.round(center + amount * (center - blur))));
+                }
+                d[idx + 3] = s[idx + 3]; // preserve alpha
+            }
+        }
+        // Copy edge pixels as-is
+        for (let i = 0; i < d.length; i += 4) {
+            const y = Math.floor(i / 4 / w);
+            const x = (i / 4) % w;
+            if (y === 0 || y === h - 1 || x === 0 || x === w - 1) {
+                d[i] = s[i]; d[i + 1] = s[i + 1]; d[i + 2] = s[i + 2]; d[i + 3] = s[i + 3];
+            }
+        }
+        ctx.putImageData(dst, 0, 0);
+    };
+
     const resizeBase64Img = (base64, width, height) => {
         return new Promise((resolve) => {
             const img = new Image();
@@ -22,7 +70,14 @@ const Exporter = ({ data, onGoToStep2 }) => {
                 const drawX = (width - drawW) / 2;
                 const drawY = (height - drawH) / 2;
 
+                // Use high-quality image smoothing before drawing
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
                 ctx.drawImage(img, drawX, drawY, drawW, drawH);
+
+                // Apply sharpening pass
+                sharpenCanvas(canvas, 0.55);
+
                 resolve(canvas.toDataURL('image/png').split(',')[1]);
             };
             img.src = base64;

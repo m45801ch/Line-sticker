@@ -2,19 +2,19 @@ import React, { useState, useRef } from 'react';
 import { Copy, Sparkles, Check, Edit3, RotateCcw } from 'lucide-react';
 
 const artStyleOptions = [
-  { id: 'original', name: '原圖片風格' },
-  { id: 'manga-style', name: '日漫畫風 (指定漫畫家)' },
+  { id: 'original', name: '原圖片風格 (Original Style)' },
+  { id: 'manga-style', name: '日漫畫風 (Manga Artist)' },
   { id: 'cute-chibi', name: '日系精緻 Q 版 (Chibi)' },
-  { id: 'cute-2d', name: '可愛活潑 2D 平面' },
-  { id: 'watercolor', name: '溫暖水彩風' },
-  { id: 'crayon', name: '柔和蠟筆插畫' },
-  { id: 'vector', name: '簡約向量插畫' },
-  { id: '3d-render', name: '精緻 3D 算圖' },
-  { id: 'minimalist', name: '極簡幾何風格' },
-  { id: 'ink-wash', name: '現代創意墨繪' },
-  { id: 'pop-art', name: '鮮豔美式波普' },
-  { id: 'pencil', name: '鉛筆手寫塗鴉' },
-  { id: 'retro', name: '復古像素 (Retro)' },
+  { id: 'cute-2d', name: '可愛活潑 2D 平面 (2D Flat)' },
+  { id: 'watercolor', name: '溫暖水彩風 (Watercolor)' },
+  { id: 'crayon', name: '柔和蠟筆插畫 (Crayon)' },
+  { id: 'vector', name: '簡約向量插畫 (Vector)' },
+  { id: '3d-render', name: '精緻 3D 算圖 (3D Render)' },
+  { id: 'minimalist', name: '極簡幾何風格 (Minimalist)' },
+  { id: 'ink-wash', name: '現代創意墨繪 (Ink Wash)' },
+  { id: 'pop-art', name: '鮮豔美式波普 (Pop Art)' },
+  { id: 'pencil', name: '鉛筆手寫塗鴉 (Colored Pencil)' },
+  { id: 'retro', name: '復古像素 (Retro Pixel)' },
   { id: 'custom', name: '自訂畫風...' },
 ];
 
@@ -53,34 +53,37 @@ const borderStyleOptions = [
 ];
 
 const fontStyleOptions = [
-  { id: 'cute-q', name: '可愛 Q 版字型' },
-  { id: 'handwriting', name: '手寫塗鴉字型' },
-  { id: 'marker', name: '粗體馬克筆字型' },
-  { id: 'bubble', name: '圓潤泡泡字型' },
-  { id: 'retro-marker', name: '復古麥克筆字型' },
-  { id: 'brush', name: '日系毛筆字型' },
-  { id: 'geometric', name: '幾何方塊字型' },
-  { id: 'neon', name: '霓虹發光字型' },
-  { id: 'comic', name: '漫畫效果字型' },
-  { id: 'chalk', name: '黑板粉筆字型' },
-  { id: 'pixel-game', name: '遊戲像素字型' },
-  { id: 'dot-matrix', name: '點陣印刷字型' },
+  { id: 'cute-q', name: '可愛 Q 版字型 (Cute Chibi Font)' },
+  { id: 'handwriting', name: '手寫塗鴉字型 (Handwriting Doodle)' },
+  { id: 'marker', name: '粗體馬克筆字型 (Bold Marker)' },
+  { id: 'bubble', name: '圓潤泡泡字型 (Bubble Font)' },
+  { id: 'retro-marker', name: '復古麥克筆字型 (Retro Marker)' },
+  { id: 'brush', name: '日系毛筆字型 (Japanese Brush)' },
+  { id: 'geometric', name: '幾何方塊字型 (Geometric Block)' },
+  { id: 'neon', name: '霓虹發光字型 (Neon Glow)' },
+  { id: 'comic', name: '漫畫效果字型 (Comic Style)' },
+  { id: 'chalk', name: '黑板粉筆字型 (Chalk Board)' },
+  { id: 'pixel-game', name: '遊戲像素字型 (Game Pixel)' },
+  { id: 'dot-matrix', name: '點陣印刷字型 (Dot Matrix)' },
 ];
 
 const fontColorOptions = [
-  { id: 'high-sat', name: '高飽和亂數' },
-  { id: 'yellow', name: '黃色' },
-  { id: 'red', name: '紅色' },
-  { id: 'mixed', name: '混合色' },
-  { id: 'blue', name: '藍色' },
-  { id: 'purple', name: '紫色' },
-  { id: 'orange', name: '橘色' },
-  { id: 'pink', name: '粉紅色' },
-  { id: 'neon-color', name: '霓虹色' },
-  { id: 'gold', name: '金色' },
-  { id: 'sky-blue', name: '天藍色' },
-  { id: 'grape', name: '葡萄紫' },
+  { id: 'high-sat', name: '高飽和亂數 (Random Vivid)' },
+  { id: 'yellow', name: '黃色 (Yellow)' },
+  { id: 'red', name: '紅色 (Red)' },
+  { id: 'mixed', name: '混合色 (Mixed)' },
+  { id: 'blue', name: '藍色 (Blue)' },
+  { id: 'purple', name: '紫色 (Purple)' },
+  { id: 'orange', name: '橘色 (Orange)' },
+  { id: 'pink', name: '粉紅色 (Pink)' },
+  { id: 'neon-color', name: '霓虹色 (Neon)' },
+  { id: 'gold', name: '金色 (Gold)' },
+  { id: 'sky-blue', name: '天藍色 (Sky Blue)' },
+  { id: 'grape', name: '葡萄紫 (Grape)' },
+  { id: 'black', name: '黑色 (Black)' },
+  { id: 'custom-color', name: '自定義顏色...' },
 ];
+
 
 const DEFAULT_PROMPT_TEMPLATE = `🚀 LINE 12格角色貼圖生成 Prompt
 請參考上傳圖片中的角色，生成一張包含 12 格不同動作的角色貼圖合集。
@@ -136,10 +139,12 @@ const PromptGenerator = () => {
   const [borderStyleId, setBorderStyleId] = useState(borderStyleOptions[0].id);
   const [fontStyleId, setFontStyleId] = useState(fontStyleOptions[0].id);
   const [fontColorId, setFontColorId] = useState(fontColorOptions[0].id);
+  const [customFontColor, setCustomFontColor] = useState('#FF6B6B');
 
   const [promptTemplate, setPromptTemplate] = useState(DEFAULT_PROMPT_TEMPLATE);
   const [isEditingTemplate, setIsEditingTemplate] = useState(false);
   const [isSimpleMode, setIsSimpleMode] = useState(false);
+  const [promptLang, setPromptLang] = useState('zh'); // 'zh' | 'en'
 
   const [copied, setCopied] = useState(false);
   const promptRef = useRef(null);
@@ -169,10 +174,71 @@ const PromptGenerator = () => {
   };
 
   const getFontColorName = () => {
-    return fontColorOptions.find(f => f.id === fontColorId)?.name || '高飽和亂數';
+    if (fontColorId === 'custom-color') return customFontColor;
+    return fontColorOptions.find(f => f.id === fontColorId)?.name || '高飽和亂數 (Random Vivid)';
+  };
+
+  const getArtStyleNameEn = () => {
+    if (artStyleId === 'custom') return customArtStyle || 'cute 2D flat style';
+    if (artStyleId === 'manga-style') return `${mangaArtist} manga art style`;
+    const en = { original: 'original image style', 'cute-chibi': 'Japanese chibi style', 'cute-2d': 'cute 2D flat illustration', watercolor: 'warm watercolor style', crayon: 'soft crayon illustration', vector: 'clean vector illustration', '3d-render': 'detailed 3D render', minimalist: 'minimalist geometric style', 'ink-wash': 'modern ink wash painting', 'pop-art': 'vibrant American pop art', pencil: 'colored pencil sketch', retro: 'retro pixel art' };
+    return en[artStyleId] || artStyleOptions.find(s => s.id === artStyleId)?.name || 'cute 2D flat style';
+  };
+
+  const buildPromptEn = () => {
+    const border = { 'no-border': 'no white border', 'thick-white': 'thick white border', 'thin-white': 'thin white border' }[borderStyleId] || 'no white border';
+    const fontColor = fontColorId === 'custom-color' ? customFontColor : (getFontColorName().replace(/（.*?）/g, '').replace(/\.*/g, '').split('(')[0].trim());
+    const fontStyle = getFontStyleName().split('(')[1]?.replace(')', '').trim() || getFontStyleName();
+    const artStyle = getArtStyleNameEn();
+    const words = getThemeWords();
+    const theme = getThemeName();
+
+    if (isSimpleMode) {
+      return `[Art Style]: ${artStyle}
+[Character & Border]: ${border}
+[Font Style]: ${fontStyle}
+[Font Color]: ${fontColor}
+[Theme]: ${theme}`;
+    }
+
+    return `🚀 LINE 12-Panel Character Sticker Generation Prompt
+Please reference the uploaded character image and generate a single sheet containing 12 different action panels.
+[Character Consistency]
+Fully maintain the original character's hairstyle, facial features, clothing, colors, and proportions. Do not redesign or alter the character's appearance.
+[Art Style]:
+${artStyle}
+[Character & Text Border]:
+${border}
+[Background]: Must be solid green #00FF00 (no gradient, no noise)
+[Layout & Canvas Size]:
+Total canvas: 2560 × 1664 px
+4 × 3 grid layout, 12 panels total
+Approx. 0.2 cm padding per panel
+Mix of distant, mid-range, and close-up shots
+Include front, side, top-down, and exaggerated perspectives
+[Text Rules]:
+Language: Traditional Chinese (no repetition)
+[Text Content]:
+${words}
+[Font Style]:
+${fontStyle}
+[Font Color]:
+${fontColor}
+[Font Style Restrictions]:
+No green-toned colors
+No emoji
+Do not obscure the character
+Font color must not be #00FF00 (pure green)
+[Expression & Action Design]:
+Each panel must have a unique expression and action
+Emotions and actions must match the text meaning
+[Output Format]:
+Output a single horizontal 4 × 3 image
+Background must be solid green #00FF00`;
   };
 
   const buildPrompt = () => {
+    if (promptLang === 'en') return buildPromptEn();
     let result = isSimpleMode ? SIMPLE_PROMPT_TEMPLATE : promptTemplate;
     result = result.replace(/{artStyle}/g, getArtStyleName());
     result = result.replace(/{borderStyle}/g, getBorderStyleValue());
@@ -340,6 +406,23 @@ const PromptGenerator = () => {
           <select className="select-input" value={fontColorId} onChange={(e) => setFontColorId(e.target.value)}>
             {fontColorOptions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
+          {fontColorId === 'custom-color' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem' }}>
+              <input
+                type="color"
+                value={customFontColor}
+                onChange={(e) => setCustomFontColor(e.target.value)}
+                style={{ width: '2.5rem', height: '2rem', border: 'none', borderRadius: '0.25rem', cursor: 'pointer' }}
+              />
+              <input
+                type="text"
+                value={customFontColor}
+                onChange={(e) => setCustomFontColor(e.target.value)}
+                maxLength={7}
+                style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', color: '#fff', padding: '0.3rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.85rem', width: '90px', fontFamily: 'monospace' }}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -405,6 +488,25 @@ const PromptGenerator = () => {
             >
               ⚡ {isSimpleMode ? '簡化模式 ON' : '簡化模式'}
             </button>
+            {/* Language Toggle */}
+            <div style={{ display: 'flex', border: '1px solid var(--border-color)', borderRadius: '0.25rem', overflow: 'hidden' }}>
+              {[['zh', '中文'], ['en', 'EN']].map(([lang, label]) => (
+                <button
+                  key={lang}
+                  onClick={() => setPromptLang(lang)}
+                  style={{
+                    padding: '0.4rem 0.7rem',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    border: 'none',
+                    background: promptLang === lang ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)',
+                    color: promptLang === lang ? '#000' : 'var(--text-secondary)',
+                    fontWeight: promptLang === lang ? 700 : 400,
+                    transition: 'all 0.2s'
+                  }}
+                >{label}</button>
+              ))}
+            </div>
           </div>
         </div>
 
