@@ -101,9 +101,10 @@ const DEFAULT_PROMPT_TEMPLATE = `🚀 LINE 12格角色貼圖生成 Prompt
 每張貼圖約 0.2cm Padding
 遠景與中景、近景交互隨機搭配
 必須包含正面、側面與俯視角、誇張視角,各種不同角度
-【文字規範】:
-語言：台灣繁體中文(不要重複)
-【文字內容包含】：
+【文字規範】：
+語言：台灣繁體中文 (不要重複)
+
+{themeHeader}
 {words}
 【字型風格】：
 {fontStyle}
@@ -158,6 +159,11 @@ const PromptGenerator = () => {
   const getThemeWords = () => {
     if (themeId === 'custom') return customThemeWords || '早安、晚安、謝謝、不客氣、對不起、沒問題、好的、收到、拜託、辛苦了、OK、等等';
     return themeOptions.find(t => t.id === themeId)?.words || '早安、晚安、謝謝、不客氣、對不起、沒問題、好的、收到、拜託、辛苦了、OK、等等';
+  };
+
+  const getThemeHeader = () => {
+    if (themeId === 'custom') return '【貼圖主題】：';
+    return '【文字內容包含】：';
   };
 
   const getThemeName = () => {
@@ -242,6 +248,7 @@ Background must be solid green #00FF00`;
     let result = isSimpleMode ? SIMPLE_PROMPT_TEMPLATE : promptTemplate;
     result = result.replace(/{artStyle}/g, getArtStyleName());
     result = result.replace(/{borderStyle}/g, getBorderStyleValue());
+    result = result.replace(/{themeHeader}/g, getThemeHeader());
     result = result.replace(/{words}/g, getThemeWords());
     result = result.replace(/{themeName}/g, getThemeName());
     result = result.replace(/{fontStyle}/g, getFontStyleName());
@@ -293,6 +300,7 @@ Background must be solid green #00FF00`;
     const dynamicValues = [
       getArtStyleName(),
       getBorderStyleValue(),
+      getThemeHeader(),
       getThemeWords(),
       getFontStyleName(),
       getFontColorName(),
@@ -389,8 +397,8 @@ Background must be solid green #00FF00`;
 
         {themeId === 'custom' && (
           <div className="control-group" style={{ gridColumn: '1 / -1' }}>
-            <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>自行輸入 12 個文字（用頓號分隔）</label>
-            <input type="text" className="text-input" placeholder="例如: 早安、晚安、謝謝、不客氣..." value={customThemeWords} onChange={(e) => setCustomThemeWords(e.target.value)} />
+            <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>自行輸入主題</label>
+            <input type="text" className="text-input" placeholder="例如: 可愛貓咪、幽默大叔..." value={customThemeWords} onChange={(e) => setCustomThemeWords(e.target.value)} />
           </div>
         )}
 
