@@ -84,9 +84,86 @@ const fontColorOptions = [
   { id: 'custom-color', name: '自定義顏色...' },
 ];
 
+const compDistanceOptions = [
+  { id: 'random-dist', name: '隨機距離' },
+  { id: 'dist-1', name: '極近特寫，臉佔滿畫面（extreme close-up, face fills the frame）' },
+  { id: 'dist-2', name: '臉部特寫（close-up portrait）' },
+  { id: 'dist-3', name: '胸口以上（medium close-up, chest up）' },
+  { id: 'dist-4', name: '腰部以上（medium shot, waist up）' },
+  { id: 'dist-5', name: '全身入鏡（full body shot）' },
+  { id: 'dist-6', name: '人物在畫面中偏小（character small in frame）' },
+  { id: 'dist-7', name: '臉佔畫面70%（face occupies 70% of frame）' },
+  { id: 'dist-8', name: '緊湊裁切（tight crop）' },
+  { id: 'dist-9', name: '肩膀以上裁切（cropped at shoulders）' },
+  { id: 'dist-10', name: '正中央半身像（centered bust portrait）' }
+];
+
+const compAngleOptions = [
+  { id: 'random-angle', name: '隨機角度' },
+  { id: 'angle-1', name: '平視角度（eye level angle）' },
+  { id: 'angle-2', name: '低角度仰拍（low angle shot）' },
+  { id: 'angle-3', name: '高角度俯拍（high angle shot）' },
+  { id: 'angle-4', name: '微俯視可愛角度（slight top-down angle）' },
+  { id: 'angle-5', name: '微仰視強勢角度（slight low perspective）' },
+  { id: 'angle-6', name: '45度側面（45 degree side angle）' },
+  { id: 'angle-7', name: '側臉構圖（profile view）' },
+  { id: 'angle-8', name: '三分之四側臉（three-quarter view）' },
+  { id: 'angle-9', name: '正面直視鏡頭（straight frontal view）' },
+  { id: 'angle-10', name: '過肩視角（over-the-shoulder view）' }
+];
+
+const compPositionOptions = [
+  { id: 'random-pos', name: '隨機位置' },
+  { id: 'pos-1', name: '置中構圖（centered composition）' },
+  { id: 'pos-2', name: '三分法構圖（rule of thirds composition）' },
+  { id: 'pos-3', name: '主體靠左（subject aligned to left）' },
+  { id: 'pos-4', name: '主體靠右（subject aligned to right）' },
+  { id: 'pos-5', name: '對稱構圖（symmetrical composition）' },
+  { id: 'pos-6', name: '上方留白放文字（leave space above for text）' },
+  { id: 'pos-7', name: '頭靠近畫面上緣（head near top frame）' },
+  { id: 'pos-8', name: '主體略微偏移（subject slightly off-center）' },
+  { id: 'pos-9', name: '畫面上方大面積留白（large empty space on top）' }
+];
+
+const compFormatOptions = [
+  { id: 'random-fmt', name: '隨機裁切' },
+  { id: 'fmt-1', name: '正方形構圖（square framing）' },
+  { id: 'fmt-2', name: '直式構圖（portrait orientation）' },
+  { id: 'fmt-3', name: '角色貼近邊框（character touching frame edges）' },
+  { id: 'fmt-4', name: '角色突破邊框（subject breaking frame boundary）' },
+  { id: 'fmt-5', name: '額頭被裁切（forehead slightly cropped）' },
+  { id: 'fmt-6', name: '下巴略裁切（chin slightly cut off）' },
+  { id: 'fmt-7', name: '放大鏡頭感（zoomed-in look）' },
+  { id: 'fmt-8', name: '魚眼變形（fisheye distortion）' },
+  { id: 'fmt-9', name: '誇張透視（exaggerated perspective）' }
+];
+
+const compDynamicOptions = [
+  { id: 'random-dyn', name: '隨機動態' },
+  { id: 'dyn-1', name: '動態姿勢（dynamic pose）' },
+  { id: 'dyn-2', name: '手向前伸出（hand reaching toward camera）' },
+  { id: 'dyn-3', name: '誇張前景透視（strong foreground perspective）' },
+  { id: 'dyn-4', name: '畫面傾斜（slight dutch angle）' },
+  { id: 'dyn-5', name: '衝擊畫面感（impact frame）' },
+  { id: 'dyn-6', name: '動作定格瞬間（action freeze frame）' },
+  { id: 'dyn-7', name: '動作線條（motion lines around character）' },
+  { id: 'dyn-8', name: '強烈透視感（dramatic perspective）' }
+];
+
+const compEmotionOptions = [
+  { id: 'random-emo', name: '隨機情緒' },
+  { id: 'emo-1', name: '臉部比例放大（face enlarged for emphasis）' },
+  { id: 'emo-2', name: '眼睛誇張放大（eyes exaggerated and enlarged）' },
+  { id: 'emo-3', name: '嘴巴張大（mouth wide open）' },
+  { id: 'emo-4', name: '強調表情（focus on facial expression）' },
+  { id: 'emo-5', name: '眼睛特寫（intense eye close-up）' },
+  { id: 'emo-6', name: '誇張臉部透視（exaggerated facial perspective）' },
+  { id: 'emo-7', name: '下巴陰影加強戲劇感（dramatic shadow under chin）' }
+];
+
 
 const DEFAULT_PROMPT_TEMPLATE = `🚀 LINE 12格角色貼圖生成 Prompt
-請參考上傳圖片中的角色，生成一張包含 12 格不同動作的角色貼圖合集。
+請參考上傳圖片中的角色，生成一張包含 12 格不同動作的角色貼圖合集,直接生成圖片。
 【角色一致性要求】
 必須完全維持原上傳圖角色之髮型、五官、服裝、顏色與比例
 不可改變角色設定或重新設計造型
@@ -99,8 +176,8 @@ const DEFAULT_PROMPT_TEMPLATE = `🚀 LINE 12格角色貼圖生成 Prompt
 總尺寸：2560 × 1664 px
 分割為橫版4 × 3 排列，共12格
 每張貼圖約 0.2cm Padding
-遠景與中景、近景交互隨機搭配
-必須包含正面、側面與俯視角、誇張視角,各種不同角度
+【構圖】:
+{composition}
 【文字規範】：
 語言：台灣繁體中文 (不要重複)
 
@@ -144,10 +221,21 @@ const PromptGenerator = () => {
   const [fontColorId, setFontColorId] = useState(fontColorOptions[0].id);
   const [customFontColor, setCustomFontColor] = useState('#FF6B6B');
 
+  const [compositionMode, setCompositionMode] = useState('random'); // 'random' | 'custom'
+  const [compDistanceId, setCompDistanceId] = useState(compDistanceOptions[0].id);
+  const [compAngleId, setCompAngleId] = useState(compAngleOptions[0].id);
+  const [compPositionId, setCompPositionId] = useState(compPositionOptions[0].id);
+  const [compFormatId, setCompFormatId] = useState(compFormatOptions[0].id);
+  const [compDynamicId, setCompDynamicId] = useState(compDynamicOptions[0].id);
+  const [compEmotionId, setCompEmotionId] = useState(compEmotionOptions[0].id);
+
   const [promptTemplate, setPromptTemplate] = useState(DEFAULT_PROMPT_TEMPLATE);
   const [isEditingTemplate, setIsEditingTemplate] = useState(false);
   const [isSimpleMode, setIsSimpleMode] = useState(false);
   const [promptLang, setPromptLang] = useState('zh'); // 'zh' | 'en'
+
+  const [savedCustomTemplate1, setSavedCustomTemplate1] = useState(localStorage.getItem('savedCustomTemplate1') || null);
+  const [savedCustomTemplate2, setSavedCustomTemplate2] = useState(localStorage.getItem('savedCustomTemplate2') || null);
 
   const [copied, setCopied] = useState(false);
   const promptRef = useRef(null);
@@ -184,6 +272,30 @@ const PromptGenerator = () => {
   const getFontColorName = () => {
     if (fontColorId === 'custom-color') return customFontColor;
     return fontColorOptions.find(f => f.id === fontColorId)?.name || '高飽和亂數 (Random Vivid)';
+  };
+
+  const getCompositionString = () => {
+    if (compositionMode === 'random') {
+      return '遠景與中景、近景交互隨機搭配\n必須包含正面、側面與俯視角、誇張視角,各種不同角度';
+    }
+    const dist = compDistanceOptions.find(o => o.id === compDistanceId)?.name;
+    const ang = compAngleOptions.find(o => o.id === compAngleId)?.name;
+    const pos = compPositionOptions.find(o => o.id === compPositionId)?.name;
+    const fmt = compFormatOptions.find(o => o.id === compFormatId)?.name;
+    const dyn = compDynamicOptions.find(o => o.id === compDynamicId)?.name;
+    const emo = compEmotionOptions.find(o => o.id === compEmotionId)?.name;
+
+    const parts = [
+      dist !== '隨機距離' && `距離：${dist}`,
+      ang !== '隨機角度' && `角度：${ang}`,
+      pos !== '隨機位置' && `位置：${pos}`,
+      fmt !== '隨機裁切' && `裁切：${fmt}`,
+      dyn !== '隨機動態' && `動態：${dyn}`,
+      emo !== '隨機情緒' && `情緒：${emo}`
+    ].filter(Boolean);
+
+    if (parts.length === 0) return '遠景與中景、近景交互隨機搭配\n必須包含正面、側面與俯視角、誇張視角,各種不同角度';
+    return parts.join('\n');
   };
 
   const getArtStyleNameEn = () => {
@@ -255,6 +367,7 @@ Background must be solid green #00FF00`;
     result = result.replace(/{themeName}/g, getThemeName());
     result = result.replace(/{fontStyle}/g, getFontStyleName());
     result = result.replace(/{fontColor}/g, getFontColorName());
+    result = result.replace(/{composition}/g, getCompositionString());
     return result;
   };
 
@@ -268,6 +381,21 @@ Background must be solid green #00FF00`;
     setConfirmedCustomTheme(customThemeWords);
     setIsThemeConfirmed(true);
     setTimeout(() => setIsThemeConfirmed(false), 2000);
+  };
+
+  const handleSaveCustom = (slot) => {
+    const value = promptTemplate;
+    localStorage.setItem(`savedCustomTemplate${slot}`, value);
+    if (slot === 1) setSavedCustomTemplate1(value);
+    if (slot === 2) setSavedCustomTemplate2(value);
+  };
+
+  const handleLoadCustom = (slot) => {
+    const value = slot === 1 ? savedCustomTemplate1 : savedCustomTemplate2;
+    if (value) {
+      setPromptTemplate(value);
+      setIsSimpleMode(false);
+    }
   };
 
   const generatedPrompt = buildPrompt();
@@ -470,6 +598,77 @@ Background must be solid green #00FF00`;
             </div>
           )}
         </div>
+
+        {/* Row 3: Composition Settings */}
+        <div className="control-group" style={{ gridColumn: '1 / -1', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
+          <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>構圖設定</label>
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+            <button
+              onClick={() => setCompositionMode('random')}
+              style={{
+                flex: 1, padding: '0.6rem', borderRadius: '0.5rem', border: '1px solid transparent', cursor: 'pointer', transition: 'all 0.2s',
+                background: compositionMode === 'random' ? 'var(--primary-color)' : 'rgba(255, 255, 255, 0.05)',
+                color: compositionMode === 'random' ? '#000' : 'var(--text-secondary)',
+                fontWeight: compositionMode === 'random' ? 600 : 400
+              }}
+            >
+              🎲 隨機配置
+            </button>
+            <button
+              onClick={() => setCompositionMode('custom')}
+              style={{
+                flex: 1, padding: '0.6rem', borderRadius: '0.5rem', border: '1px solid transparent', cursor: 'pointer', transition: 'all 0.2s',
+                background: compositionMode === 'custom' ? 'var(--primary-color)' : 'rgba(255, 255, 255, 0.05)',
+                color: compositionMode === 'custom' ? '#000' : 'var(--text-secondary)',
+                fontWeight: compositionMode === 'custom' ? 600 : 400
+              }}
+            >
+              馃帠 自訂構圖
+            </button>
+          </div>
+
+          {compositionMode === 'custom' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', background: 'rgba(0,0,0,0.15)', padding: '1rem', borderRadius: '0.5rem' }}>
+              <div className="control-group">
+                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.3rem' }}>一、畫面距離</label>
+                <select className="select-input" value={compDistanceId} onChange={e => setCompDistanceId(e.target.value)}>
+                  {compDistanceOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+              </div>
+              <div className="control-group">
+                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.3rem' }}>二、鏡頭角度</label>
+                <select className="select-input" value={compAngleId} onChange={e => setCompAngleId(e.target.value)}>
+                  {compAngleOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+              </div>
+              <div className="control-group">
+                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.3rem' }}>三、構圖位置</label>
+                <select className="select-input" value={compPositionId} onChange={e => setCompPositionId(e.target.value)}>
+                  {compPositionOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+              </div>
+              <div className="control-group">
+                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.3rem' }}>四、裁切與畫面</label>
+                <select className="select-input" value={compFormatId} onChange={e => setCompFormatId(e.target.value)}>
+                  {compFormatOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+              </div>
+              <div className="control-group">
+                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.3rem' }}>五、動態感構圖</label>
+                <select className="select-input" value={compDynamicId} onChange={e => setCompDynamicId(e.target.value)}>
+                  {compDynamicOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+              </div>
+              <div className="control-group">
+                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.3rem' }}>六、情緒強化</label>
+                <select className="select-input" value={compEmotionId} onChange={e => setCompEmotionId(e.target.value)}>
+                  {compEmotionOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
 
       <div style={{ position: 'relative' }}>
@@ -478,6 +677,42 @@ Background must be solid green #00FF00`;
             生成提示詞 (Prompt) — 主題：{getThemeName()}
           </label>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => handleSaveCustom(1)}
+                style={{
+                  background: 'rgba(0, 242, 254, 0.1)', border: '1px solid rgba(0, 242, 254, 0.3)', color: 'var(--text-secondary)',
+                  padding: '0.4rem 0.6rem', borderRadius: '0.25rem', fontSize: '0.75rem', cursor: 'pointer', transition: 'all 0.2s'
+                }}
+              >💾 儲存自定義1</button>
+              {savedCustomTemplate1 && (
+                <button
+                  onClick={() => handleLoadCustom(1)}
+                  style={{
+                    background: 'rgba(0, 230, 118, 0.1)', border: '1px solid rgba(0, 230, 118, 0.3)', color: 'var(--text-secondary)',
+                    padding: '0.4rem 0.6rem', borderRadius: '0.25rem', fontSize: '0.75rem', cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >📂 載入自定義1</button>
+              )}
+              <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)', margin: '0 0.2rem' }}></div>
+              <button
+                onClick={() => handleSaveCustom(2)}
+                style={{
+                  background: 'rgba(0, 242, 254, 0.1)', border: '1px solid rgba(0, 242, 254, 0.3)', color: 'var(--text-secondary)',
+                  padding: '0.4rem 0.6rem', borderRadius: '0.25rem', fontSize: '0.75rem', cursor: 'pointer', transition: 'all 0.2s'
+                }}
+              >💾 儲存自定義2</button>
+              {savedCustomTemplate2 && (
+                <button
+                  onClick={() => handleLoadCustom(2)}
+                  style={{
+                    background: 'rgba(0, 230, 118, 0.1)', border: '1px solid rgba(0, 230, 118, 0.3)', color: 'var(--text-secondary)',
+                    padding: '0.4rem 0.6rem', borderRadius: '0.25rem', fontSize: '0.75rem', cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >📂 載入自定義2</button>
+              )}
+            </div>
+
             <button
               onClick={() => setIsEditingTemplate(!isEditingTemplate)}
               style={{
