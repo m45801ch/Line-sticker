@@ -228,6 +228,7 @@ const PromptGenerator = () => {
   const [compFormatId, setCompFormatId] = useState(compFormatOptions[0].id);
   const [compDynamicId, setCompDynamicId] = useState(compDynamicOptions[0].id);
   const [compEmotionId, setCompEmotionId] = useState(compEmotionOptions[0].id);
+  const [compStrictCount, setCompStrictCount] = useState('12');
 
   const [promptTemplate, setPromptTemplate] = useState(DEFAULT_PROMPT_TEMPLATE);
   const [isEditingTemplate, setIsEditingTemplate] = useState(false);
@@ -294,8 +295,14 @@ const PromptGenerator = () => {
       emo !== '隨機情緒' && `情緒：${emo}`
     ].filter(Boolean);
 
-    if (parts.length === 0) return '遠景與中景、近景交互隨機搭配\n必須包含正面、側面與俯視角、誇張視角,各種不同角度';
-    return parts.join('\n');
+    const countText = compStrictCount === '12' ? '全部 12 格全部套用' : `至少要有 ${compStrictCount} 格`;
+    const requirement = `構圖需嚴格遵守 12 宮格內${countText}依照構圖設定生成宮格內圖案：`;
+
+    if (parts.length === 0) {
+      return `${requirement}\n遠景與中景、近景交互隨機搭配`;
+    }
+
+    return `${requirement}\n${parts.join('\n')}`;
   };
 
   const getArtStyleNameEn = () => {
@@ -623,12 +630,21 @@ Background must be solid green #00FF00`;
                 fontWeight: compositionMode === 'custom' ? 600 : 400
               }}
             >
-              馃帠 自訂構圖
+              自訂構圖
             </button>
           </div>
 
           {compositionMode === 'custom' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', background: 'rgba(0,0,0,0.15)', padding: '1rem', borderRadius: '0.5rem' }}>
+              <div className="control-group" style={{ gridColumn: '1 / -1' }}>
+                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.3rem' }}>套用宮格數</label>
+                <select className="select-input" value={compStrictCount} onChange={e => setCompStrictCount(e.target.value)}>
+                  <option value="12">全部 12 格全部套用</option>
+                  {[11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(n => (
+                    <option key={n} value={n}>至少有 {n} 格套用</option>
+                  ))}
+                </select>
+              </div>
               <div className="control-group">
                 <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.3rem' }}>一、畫面距離</label>
                 <select className="select-input" value={compDistanceId} onChange={e => setCompDistanceId(e.target.value)}>
