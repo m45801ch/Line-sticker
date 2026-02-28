@@ -136,6 +136,8 @@ const PromptGenerator = () => {
 
   const [themeId, setThemeId] = useState(themeOptions[0].id);
   const [customThemeWords, setCustomThemeWords] = useState('');
+  const [confirmedCustomTheme, setConfirmedCustomTheme] = useState('');
+  const [isThemeConfirmed, setIsThemeConfirmed] = useState(false);
 
   const [borderStyleId, setBorderStyleId] = useState(borderStyleOptions[0].id);
   const [fontStyleId, setFontStyleId] = useState(fontStyleOptions[0].id);
@@ -157,7 +159,7 @@ const PromptGenerator = () => {
   };
 
   const getThemeWords = () => {
-    if (themeId === 'custom') return customThemeWords || '早安、晚安、謝謝、不客氣、對不起、沒問題、好的、收到、拜託、辛苦了、OK、等等';
+    if (themeId === 'custom') return confirmedCustomTheme || '早安、晚安、謝謝、不客氣、對不起、沒問題、好的、收到、拜託、辛苦了、OK、等等';
     return themeOptions.find(t => t.id === themeId)?.words || '早安、晚安、謝謝、不客氣、對不起、沒問題、好的、收到、拜託、辛苦了、OK、等等';
   };
 
@@ -167,7 +169,7 @@ const PromptGenerator = () => {
   };
 
   const getThemeName = () => {
-    if (themeId === 'custom') return '自訂主題';
+    if (themeId === 'custom') return confirmedCustomTheme || '自訂主題';
     return themeOptions.find(t => t.id === themeId)?.name || '常用語';
   };
 
@@ -260,6 +262,12 @@ Background must be solid green #00FF00`;
     setPromptTemplate(DEFAULT_PROMPT_TEMPLATE);
     setIsSimpleMode(false);
     setIsEditingTemplate(false);
+  };
+
+  const handleConfirmTheme = () => {
+    setConfirmedCustomTheme(customThemeWords);
+    setIsThemeConfirmed(true);
+    setTimeout(() => setIsThemeConfirmed(false), 2000);
   };
 
   const generatedPrompt = buildPrompt();
@@ -398,7 +406,37 @@ Background must be solid green #00FF00`;
         {themeId === 'custom' && (
           <div className="control-group" style={{ gridColumn: '1 / -1' }}>
             <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>自行輸入主題</label>
-            <input type="text" className="text-input" placeholder="例如: 可愛貓咪、幽默大叔..." value={customThemeWords} onChange={(e) => setCustomThemeWords(e.target.value)} />
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                type="text"
+                className="text-input"
+                placeholder="例如: 可愛貓咪、幽默大叔..."
+                value={customThemeWords}
+                onChange={(e) => setCustomThemeWords(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmTheme(); }}
+                style={{ flex: 1 }}
+              />
+              <button
+                onClick={handleConfirmTheme}
+                style={{
+                  background: isThemeConfirmed ? 'rgba(0, 230, 118, 0.15)' : 'var(--primary-color)',
+                  border: `1px solid ${isThemeConfirmed ? 'var(--success-color)' : 'transparent'}`,
+                  color: isThemeConfirmed ? 'var(--success-color)' : '#000',
+                  padding: '0 1.5rem',
+                  borderRadius: '0.5rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  transition: 'all 0.2s',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {isThemeConfirmed ? <Check size={16} /> : null}
+                {isThemeConfirmed ? '已確定' : '確定'}
+              </button>
+            </div>
           </div>
         )}
 
