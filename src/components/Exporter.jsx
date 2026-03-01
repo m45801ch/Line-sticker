@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import JSZip from 'jszip';
 import { Download, FileArchive, Scissors } from 'lucide-react';
 
-const Exporter = ({ data, onGoToStep2 }) => {
+const Exporter = ({ data, onGoToStep3 }) => {
     // data is { stems: [...], mainIdx, tabIdx, startIndex }
     const [isExporting, setIsExporting] = useState(false);
     const startIndex = data?.startIndex || 1;
@@ -118,7 +118,7 @@ const Exporter = ({ data, onGoToStep2 }) => {
         setTimeout(() => URL.revokeObjectURL(url), 1000);
 
         setIsExporting(false);
-        onGoToStep2(); // 自動跳轉回 Step 2
+        onGoToStep3(); // 自動跳轉回 Step 3
     };
 
     if (!data || !data.stems || data.stems.length === 0) {
@@ -126,7 +126,7 @@ const Exporter = ({ data, onGoToStep2 }) => {
             <div className="glass-panel">
                 <div style={{ textAlign: 'center', marginTop: '2rem', color: 'var(--text-secondary)', padding: '2rem', border: '1px dashed var(--border-color)', borderRadius: '0.5rem' }}>
                     <FileArchive size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                    <p>請先在 Step 2 處理圖片後，才能進行打包下載</p>
+                    <p>請先在 Step 3 處理圖片後，才能進行打包下載</p>
                 </div>
             </div>
         );
@@ -142,11 +142,11 @@ const Exporter = ({ data, onGoToStep2 }) => {
                         disabled={isExporting}
                         style={{ height: '3rem', padding: '0 3rem', fontSize: '1rem' }}
                     >
-                        {isExporting ? <span className="loader">處理中...</span> : <><Download size={20} /> 下載完整 ZIP (14 張)</>}
+                        {isExporting ? <span className="loader">處理中...</span> : <><Download size={20} /> 下載完整 ZIP ({data.stems.length + 2} 張)</>}
                     </button>
                     <button
                         className="button secondary"
-                        onClick={onGoToStep2}
+                        onClick={onGoToStep3}
                         style={{ height: '3rem', padding: '0 2rem' }}
                     >
                         <Scissors size={18} /> 處理下一張貼圖

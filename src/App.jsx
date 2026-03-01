@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import PromptGenerator from './components/PromptGenerator';
 import ImageProcessor from './components/ImageProcessor';
 import Exporter from './components/Exporter';
-import { Sparkles, Scissors, PackageCheck } from 'lucide-react';
+import WatermarkRemover from './components/WatermarkRemover';
+import { Sparkles, Scissors, PackageCheck, Eraser } from 'lucide-react';
 
 function App() {
   const [activeStep, setActiveStep] = useState(1);
@@ -10,20 +11,21 @@ function App() {
 
   const steps = [
     { id: 1, label: '生成提示詞', icon: <Sparkles size={20} /> },
-    { id: 2, label: '處理圖片', icon: <Scissors size={20} /> },
-    { id: 3, label: '打包下載', icon: <PackageCheck size={20} /> },
+    { id: 2, label: '去除浮水印', icon: <Eraser size={20} /> },
+    { id: 3, label: '處理圖片', icon: <Scissors size={20} /> },
+    { id: 4, label: '打包下載', icon: <PackageCheck size={20} /> },
   ];
 
   const handleProcessed = (data) => {
     setProcessedData(data);
   };
 
-  const handleGoToStep3 = () => {
-    setActiveStep(3);
+  const handleGoToStep4 = () => {
+    setActiveStep(4);
   };
 
-  const handleGoToStep2 = () => {
-    setActiveStep(2);
+  const handleGoToStep3 = () => {
+    setActiveStep(3);
   };
 
   return (
@@ -51,17 +53,18 @@ function App() {
 
       <div className="content-area">
         {activeStep === 1 && <PromptGenerator />}
+        {activeStep === 2 && <WatermarkRemover />}
         {/* Always render ImageProcessor but hide when not active — preserves state */}
-        <div style={{ display: activeStep === 2 ? 'block' : 'none' }}>
+        <div style={{ display: activeStep === 3 ? 'block' : 'none' }}>
           <ImageProcessor
             onProcessed={handleProcessed}
-            onGoToStep3={handleGoToStep3}
+            onGoToStep4={handleGoToStep4}
           />
         </div>
-        {activeStep === 3 && (
+        {activeStep === 4 && (
           <Exporter
             data={processedData}
-            onGoToStep2={handleGoToStep2}
+            onGoToStep3={handleGoToStep3}
           />
         )}
       </div>
