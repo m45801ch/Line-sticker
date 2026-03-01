@@ -23,6 +23,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
     const [despillStrength, setDespillStrength] = useState(100);
     const [isProcessing, setIsProcessing] = useState(false);
     const [previewImage, setPreviewImage] = useState(null); // { url, name }
+    const [previewBg, setPreviewBg] = useState('grid'); // 'grid', 'white', 'black', 'blue', 'pink'
 
     // Interactive Grid settings
     const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -224,10 +225,10 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
         } : { r: 0, g: 255, b: 0 };
     };
 
-    const handleGoToStep3 = () => {
+    const handleGoToStep4 = () => {
         if (stems.length > 0) {
             onProcessed({ stems, mainIdx, tabIdx, startIndex });
-            onGoToStep3();
+            onGoToStep4();
         }
     };
 
@@ -556,8 +557,40 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                                     />
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                不滿意？調整參數後再次按「執行開始」
+                            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', alignItems: 'center' }}>
+                                    背景配色：
+                                    <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                        {[
+                                            { id: 'grid', label: '預設', value: 'grid' },
+                                            { id: 'white', label: '白', color: '#FFFFFF' },
+                                            { id: 'black', label: '黑', color: '#000000' },
+                                            { id: 'blue', label: '藍', color: '#007AFF' },
+                                            { id: 'pink', label: '粉', color: '#FF69B4' }
+                                        ].map(bg => (
+                                            <button
+                                                key={bg.id}
+                                                onClick={() => setPreviewBg(bg.id)}
+                                                style={{
+                                                    padding: '2px 8px',
+                                                    fontSize: '0.7rem',
+                                                    borderRadius: '4px',
+                                                    border: '1px solid',
+                                                    cursor: 'pointer',
+                                                    backgroundColor: previewBg === bg.id ? (bg.color || 'var(--primary-color)') : 'transparent',
+                                                    borderColor: previewBg === bg.id ? (bg.color || 'var(--primary-color)') : 'var(--border-color)',
+                                                    color: previewBg === bg.id ? (bg.id === 'white' ? '#000' : '#fff') : 'var(--text-secondary)',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                {bg.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                    不滿意？調整參數後再次按「執行開始」
+                                </div>
                             </div>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -592,14 +625,21 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                                         <div
                                             style={{
                                                 aspectRatio: '1.15',
-                                                backgroundImage: 'repeating-conic-gradient(#222 0% 25%, #1a1a1a 0% 50%)',
+                                                background: previewBg === 'grid'
+                                                    ? 'repeating-conic-gradient(#222 0% 25%, #1a1a1a 0% 50%)'
+                                                    : ({
+                                                        white: '#FFFFFF',
+                                                        black: '#000000',
+                                                        blue: '#007AFF',
+                                                        pink: '#FF69B4'
+                                                    }[previewBg]),
                                                 backgroundSize: '16px 16px',
                                                 borderRadius: '0.25rem',
                                                 overflow: 'hidden',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                cursor: 'pointer'
+                                                cursor: 'zoom-in'
                                             }}
                                             onClick={() => setPreviewImage({ url: src, name: fileName })}
                                         >
@@ -663,7 +703,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
 
                         {/* Go to Step 4 button */}
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
-                            <button className="button" style={{ padding: '0.75rem 3rem', fontSize: '1rem' }} onClick={onGoToStep4}>
+                            <button className="button" style={{ padding: '0.75rem 3rem', fontSize: '1rem' }} onClick={handleGoToStep4}>
                                 <PackageCheck size={20} /> 滿意！前往打包下載
                             </button>
                         </div>
@@ -680,7 +720,9 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                         left: 0,
                         width: '100vw',
                         height: '100vh',
-                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                        background: previewBg === 'grid'
+                            ? 'rgba(0, 0, 0, 0.9)'
+                            : (previewBg === 'white' ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.95)'), // Standard darker for most colors except white
                         zIndex: 9999,
                         display: 'flex',
                         flexDirection: 'column',
@@ -715,19 +757,38 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                     </button>
 
                     <div style={{ maxHeight: '85vh', maxWidth: '90vw', position: 'relative', textAlign: 'center' }}>
-                        <img
-                            src={previewImage.url}
-                            style={{
-                                maxWidth: '100%',
-                                maxHeight: '85vh',
-                                objectFit: 'contain',
-                                borderRadius: '0.5rem',
-                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-                            }}
-                            alt="Preview"
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                        <div style={{ color: '#fff', marginTop: '1rem', fontSize: '1rem', fontWeight: 500 }}>
+                        <div style={{
+                            position: 'relative',
+                            borderRadius: '0.5rem',
+                            overflow: 'hidden',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                            background: previewBg === 'grid'
+                                ? 'repeating-conic-gradient(#222 0% 25%, #1a1a1a 0% 50%)'
+                                : ({
+                                    white: '#FFFFFF',
+                                    black: '#000000',
+                                    blue: '#007AFF',
+                                    pink: '#FF69B4'
+                                }[previewBg]),
+                            backgroundSize: '16px 16px'
+                        }}>
+                            <img
+                                src={previewImage.url}
+                                style={{
+                                    maxWidth: '100%',
+                                    maxHeight: '85vh',
+                                    objectFit: 'contain',
+                                    cursor: 'zoom-out'
+                                }}
+                                alt="Preview"
+                            />
+                        </div>
+                        <div style={{
+                            color: previewBg === 'white' ? '#000' : '#fff',
+                            marginTop: '1rem',
+                            fontSize: '1rem',
+                            fontWeight: 500
+                        }}>
                             {previewImage.name}
                         </div>
                     </div>

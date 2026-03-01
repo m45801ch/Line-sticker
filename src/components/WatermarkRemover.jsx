@@ -336,7 +336,7 @@ const WatermarkRemover = () => {
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    cursor: res.status === 'success' ? 'pointer' : 'default'
+                                    cursor: res.status === 'success' ? 'zoom-in' : 'default'
                                 }}
                                 onClick={() => res.status === 'success' && setPreviewImage({ url: res.processedUrl, name: res.originalName })}
                             >
@@ -504,10 +504,10 @@ const WatermarkRemover = () => {
                                 maxHeight: '85vh',
                                 objectFit: 'contain',
                                 borderRadius: '0.5rem',
-                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                                cursor: 'zoom-out'
                             }}
                             alt="Preview"
-                            onClick={(e) => e.stopPropagation()}
                         />
                         <div style={{ color: '#fff', marginTop: '1rem', fontSize: '1rem', fontWeight: 500 }}>
                             {previewImage.name}
