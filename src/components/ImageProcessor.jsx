@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, ImageIcon, Sparkles, PackageCheck, Star, Tag, Download } from 'lucide-react';
+import { Upload, ImageIcon, Sparkles, PackageCheck, Star, Tag, Download, X } from 'lucide-react';
 
 const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
     const [sourceImage, setSourceImage] = useState(null);
@@ -22,6 +22,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
     const [enableDespill, setEnableDespill] = useState(true);
     const [despillStrength, setDespillStrength] = useState(100);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [previewImage, setPreviewImage] = useState(null); // { url, name }
 
     // Interactive Grid settings
     const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -588,16 +589,46 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                                             }}
                                             title="移除"
                                         >✕</button>
-                                        <div style={{
-                                            aspectRatio: '1.15', backgroundImage: 'repeating-conic-gradient(#222 0% 25%, #1a1a1a 0% 50%)',
-                                            backgroundSize: '16px 16px', borderRadius: '0.25rem', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                        }}>
+                                        <div
+                                            style={{
+                                                aspectRatio: '1.15',
+                                                backgroundImage: 'repeating-conic-gradient(#222 0% 25%, #1a1a1a 0% 50%)',
+                                                backgroundSize: '16px 16px',
+                                                borderRadius: '0.25rem',
+                                                overflow: 'hidden',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                cursor: 'pointer'
+                                            }}
+                                            onClick={() => setPreviewImage({ url: src, name: fileName })}
+                                        >
                                             <img src={src} alt={`sticker-${idx}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                         </div>
                                         <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, fontFamily: 'monospace', padding: '0.25rem', background: 'rgba(0,0,0,0.3)', borderRadius: '0.25rem' }}>
                                             {fileName}
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            <button
+                                                onClick={() => {
+                                                    const link = document.createElement('a');
+                                                    link.href = src;
+                                                    link.download = fileName;
+                                                    document.body.appendChild(link);
+                                                    link.click();
+                                                    document.body.removeChild(link);
+                                                }}
+                                                style={{
+                                                    padding: '0.4rem', border: '1px solid var(--border-color)', borderRadius: '0.25rem', fontSize: '0.75rem', cursor: 'pointer',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem',
+                                                    background: 'rgba(255, 255, 255, 0.05)',
+                                                    color: 'var(--text-primary)',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                title="單獨下載此圖"
+                                            >
+                                                <Download size={12} /> 單獨下載
+                                            </button>
                                             <button
                                                 onClick={() => setMainIdx(idx)}
                                                 style={{
@@ -639,6 +670,69 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                     </div>
                 )
             }
+
+            {/* Lightbox Overlay */}
+            {previewImage && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        width: '100vw',
+                        height: '100vh',
+                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                        zIndex: 9999,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '2rem'
+                    }}
+                    onClick={() => setPreviewImage(null)}
+                >
+                    <button
+                        style={{
+                            position: 'absolute',
+                            top: '1.5rem',
+                            right: '1.5rem',
+                            background: 'rgba(255,255,255,0.1)',
+                            border: 'none',
+                            borderRadius: '50%',
+                            color: 'white',
+                            padding: '0.5rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'background 0.2s'
+                        }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setPreviewImage(null);
+                        }}
+                    >
+                        <X size={32} />
+                    </button>
+
+                    <div style={{ maxHeight: '85vh', maxWidth: '90vw', position: 'relative', textAlign: 'center' }}>
+                        <img
+                            src={previewImage.url}
+                            style={{
+                                maxWidth: '100%',
+                                maxHeight: '85vh',
+                                objectFit: 'contain',
+                                borderRadius: '0.5rem',
+                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                            }}
+                            alt="Preview"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                        <div style={{ color: '#fff', marginTop: '1rem', fontSize: '1rem', fontWeight: 500 }}>
+                            {previewImage.name}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
