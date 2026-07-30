@@ -34,6 +34,8 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
     const [gridCols, setGridCols] = useState([0.25, 0.5, 0.75]);
     const [gridRows, setGridRows] = useState([0.333, 0.667]);
     const [dragLine, setDragLine] = useState(null); // { dir: 'col'|'row', idx: number }
+    // Single crop resize via handle
+    const [isResizing, setIsResizing] = useState(false);
 
     const containerRef = useRef(null);
 
@@ -422,9 +424,20 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                                     height: `${320 * singleCropScale}px`,
                                     border: '2px dashed #00F2FE',
                                     backgroundColor: 'rgba(0, 242, 254, 0.1)',
-                                    pointerEvents: 'none',
                                     boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.6)'
-                                }} />
+                                }}>
+                                    <div style={{
+                                        position: 'absolute', bottom: 0, right: 0, width: '20px', height: '20px',
+                                        cursor: 'nwse-resize', zIndex: 10
+                                    }}
+                                        onMouseDown={(e) => { e.stopPropagation(); setIsResizing(true); setDragStart({ x: e.clientX - 370 * singleCropScale, y: e.clientY - 320 * singleCropScale }); }}
+                                        onMouseMove={(e) => { if (!isResizing) return; e.stopPropagation(); const newW = Math.max(50, e.clientX - dragStart.x); const newH = Math.max(50, e.clientY - dragStart.y); setSingleCropScale(Math.max(0.1, Math.min(1.5, newW / 370, newH / 320))); }}
+                                        onMouseUp={() => setIsResizing(false)}
+                                        onMouseLeave={() => setIsResizing(false)}
+                                    >
+                                        <svg width="20" height="20" viewBox="0 0 20 20"><line x1="4" y1="20" x2="20" y2="4" stroke="rgba(255,255,255,0.8)" strokeWidth="2"/><line x1="10" y1="20" x2="20" y2="10" stroke="rgba(255,255,255,0.8)" strokeWidth="2"/></svg>
+                                    </div>
+                                </div>
                             </>
                         )}
                     </div>
@@ -437,11 +450,14 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                                         <span style={{ fontSize: '0.8rem', color: 'var(--primary-color)' }}>{(scale * 100).toFixed(0)}%</span>
                                     </div>
                                     <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>若兩側仍有黑邊，請將數值往右拉大</span>
-                                    <input
-                                        type="range" min="0.1" max="5" step="0.01" value={scale}
-                                        onChange={(e) => setScale(parseFloat(e.target.value))}
-                                        style={{ width: '100%', accentColor: 'var(--primary-color)' }}
-                                    />
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                        <input
+                                            type="range" min="0.1" max="5" step="0.01" value={scale}
+                                            onChange={(e) => setScale(parseFloat(e.target.value))}
+                                            style={{ flex: 1, accentColor: 'var(--primary-color)' }}
+                                        />
+                                        <button className="num-btn" style={{ fontSize: '0.7rem', width: '2rem', height: '1.6rem' }} onClick={() => { setScale(1); setGridCols([0.25, 0.5, 0.75]); setGridRows([0.333, 0.667]); setPosition({ x: 0, y: 0 }); }} title="復原預設">↺</button>
+                                    </div>
                                 </>
                             ) : (
                                 <>
