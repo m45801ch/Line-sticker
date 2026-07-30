@@ -9,7 +9,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
     const [tabIdx, setTabIdx] = useState(1);
     const [startIndex, setStartIndex] = useState(1);
 
-    const [cropMode, setCropMode] = useState('grid');
+    const [cropMode, setCropMode] = useState('gemini-grid');
     const [singleCropPos, setSingleCropPos] = useState({ x: 0, y: 0 });
     const [singleCropScale, setSingleCropScale] = useState(1);
     const [singleCropImgScale, setSingleCropImgScale] = useState(1);
@@ -30,12 +30,16 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
     const [scale, setScale] = useState(1);
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    // Adjustable grid lines for 4x3 mode: relative positions (0~1) of inner lines
+    const [gridCols, setGridCols] = useState([0.25, 0.5, 0.75]);
+    const [gridRows, setGridRows] = useState([0.333, 0.667]);
+    const [dragLine, setDragLine] = useState(null); // { dir: 'col'|'row', idx: number }
 
     const containerRef = useRef(null);
 
-    // Fixed grid dimensions for calculation
-    const GRID_WIDTH = 2560;
-    const GRID_HEIGHT = 1664;
+    // Grid dimensions based on mode
+    const GRID_WIDTH = cropMode === 'gpt-grid' ? 2048 : 2560;
+    const GRID_HEIGHT = cropMode === 'gpt-grid' ? 1152 : 1664;
 
     // UI Container dimensions (scaled down for display)
     const UI_WIDTH = 560;
@@ -71,7 +75,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
         if (!imageObj) return;
 
         setIsProcessing(true);
-        if (cropMode === 'grid') {
+        if (cropMode === 'gemini-grid' || cropMode === 'gpt-grid') {
             setStems([]);
         }
 
@@ -129,40 +133,36 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
 
         const newStems = [];
 
-        if (cropMode === 'grid') {
-            const cols = 4;
-            const rows = 3;
-
-            const cellWidth = GRID_WIDTH / cols;    // 640
-            const cellHeight = Math.floor(GRID_HEIGHT / rows); // 554
+        if (cropMode === 'gemini-grid' || cropMode === 'gpt-grid') {
+            const colBoundaries = [0, ...gridCols, 1].map(v => Math.round(v * GRID_WIDTH));
+            const rowBoundaries = [0, ...gridRows, 1].map(v => Math.round(v * GRID_HEIGHT));
 
             const tempCanvas = document.createElement('canvas');
             const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
-            tempCanvas.width = cellWidth;
-            tempCanvas.height = cellHeight;
 
-            for (let r = 0; r < rows; r++) {
-                for (let c = 0; c < cols; c++) {
-                    tempCtx.clearRect(0, 0, cellWidth, cellHeight);
+            for (let r = 0; r < rowBoundaries.length - 1; r++) {
+                for (let c = 0; c < colBoundaries.length - 1; c++) {
+                    const cellW = colBoundaries[c + 1] - colBoundaries[c];
+                    const cellH = rowBoundaries[r + 1] - rowBoundaries[r];
+                    tempCanvas.width = cellW;
+                    tempCanvas.height = cellH;
+                    tempCtx.clearRect(0, 0, cellW, cellH);
 
                     const centerX = GRID_WIDTH / 2 + position.x;
                     const centerY = GRID_HEIGHT / 2 + position.y;
-
                     const imgW = imageObj.width * scale;
                     const imgH = imageObj.height * scale;
 
-                    const cellXInGrid = c * cellWidth;
-                    const cellYInGrid = r * cellHeight;
+                    const cellXInGrid = colBoundaries[c];
+                    const cellYInGrid = rowBoundaries[r];
 
                     const srcX = (cellXInGrid - (centerX - imgW / 2)) / scale;
                     const srcY = (cellYInGrid - (centerY - imgH / 2)) / scale;
-                    const srcW = cellWidth / scale;
-                    const srcH = cellHeight / scale;
+                    const srcW = cellW / scale;
+                    const srcH = cellH / scale;
 
-                    tempCtx.drawImage(imageObj, srcX, srcY, srcW, srcH, 0, 0, cellWidth, cellHeight);
-
-                    applyChromaKey(tempCtx, cellWidth, cellHeight);
-
+                    tempCtx.drawImage(imageObj, srcX, srcY, srcW, srcH, 0, 0, cellW, cellH);
+                    applyChromaKey(tempCtx, cellW, cellH);
                     newStems.push(tempCanvas.toDataURL('image/png'));
                 }
             }
@@ -232,9 +232,14 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
         }
     };
 
+    const onGridLineDown = (dir, idx, e) => {
+        e.stopPropagation();
+        setDragLine({ dir, idx });
+    };
+
     const onMouseDown = (e) => {
         setIsDragging(true);
-        if (cropMode === 'grid') {
+        if (cropMode === 'gemini-grid' || cropMode === 'gpt-grid') {
             const ratio = GRID_WIDTH / UI_WIDTH;
             setDragStart({ x: e.clientX * ratio - position.x, y: e.clientY * ratio - position.y });
         } else {
@@ -243,8 +248,36 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
     };
 
     const onMouseMove = (e) => {
+        if (dragLine) {
+            const rect = containerRef.current.getBoundingClientRect();
+            const ratio = GRID_WIDTH / UI_WIDTH;
+            const relPos = (e.clientX - rect.left) / UI_WIDTH;
+            const relPosY = (e.clientY - rect.top) / UI_HEIGHT;
+            if (dragLine.dir === 'col') {
+                const newCols = [...gridCols];
+                newCols[dragLine.idx] = Math.max(0.05, Math.min(0.95, relPos));
+                for (let i = dragLine.idx + 1; i < newCols.length; i++) {
+                    newCols[i] = Math.max(newCols[i - 1] + 0.05, newCols[i]);
+                }
+                for (let i = dragLine.idx - 1; i >= 0; i--) {
+                    newCols[i] = Math.min(newCols[i + 1] - 0.05, newCols[i]);
+                }
+                setGridCols(newCols);
+            } else {
+                const newRows = [...gridRows];
+                newRows[dragLine.idx] = Math.max(0.05, Math.min(0.95, relPosY));
+                for (let i = dragLine.idx + 1; i < newRows.length; i++) {
+                    newRows[i] = Math.max(newRows[i - 1] + 0.05, newRows[i]);
+                }
+                for (let i = dragLine.idx - 1; i >= 0; i--) {
+                    newRows[i] = Math.min(newRows[i + 1] - 0.05, newRows[i]);
+                }
+                setGridRows(newRows);
+            }
+            return;
+        }
         if (!isDragging) return;
-        if (cropMode === 'grid') {
+        if (cropMode === 'gemini-grid' || cropMode === 'gpt-grid') {
             const ratio = GRID_WIDTH / UI_WIDTH;
             setPosition({
                 x: e.clientX * ratio - dragStart.x,
@@ -270,7 +303,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
         }
     };
 
-    const onMouseUp = () => setIsDragging(false);
+    const onMouseUp = () => { setIsDragging(false); setDragLine(null); };
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -279,18 +312,25 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                 <div style={{ flexShrink: 0, width: `${UI_WIDTH}px`, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', justifyContent: 'center' }}>
                         <button
-                            className={`button ${cropMode === 'grid' ? 'primary' : 'secondary'}`}
-                            onClick={() => setCropMode('grid')}
-                            style={{ flex: 1 }}
+                            className={`button ${cropMode === 'gemini-grid' ? 'primary' : 'secondary'}`}
+                            onClick={() => setCropMode('gemini-grid')}
+                            style={{ flex: 1, fontSize: '0.75rem' }}
                         >
-                            4x3 網格模式
+                            4x3 網格 (for Gemini)
+                        </button>
+                        <button
+                            className={`button ${cropMode === 'gpt-grid' ? 'primary' : 'secondary'}`}
+                            onClick={() => setCropMode('gpt-grid')}
+                            style={{ flex: 1, fontSize: '0.75rem' }}
+                        >
+                            4x3 網格 (for GPT)
                         </button>
                         <button
                             className={`button ${cropMode === 'single' ? 'primary' : 'secondary'}`}
                             onClick={() => setCropMode('single')}
-                            style={{ flex: 1 }}
+                            style={{ flex: 1, fontSize: '0.75rem' }}
                         >
-                            單格裁切模式
+                            單格裁切
                         </button>
                     </div>
                     <div
@@ -319,7 +359,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                                     <input type="file" hidden accept="image/*" onChange={handleUpload} />
                                 </label>
                             </div>
-                        ) : cropMode === 'grid' ? (
+                        ) : (cropMode === 'gemini-grid' || cropMode === 'gpt-grid') ? (
                             <>
                                 {/* Image representation */}
                                 <img
@@ -335,10 +375,22 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                                         transformOrigin: 'center'
                                     }}
                                 />
-                                {/* 4x3 Grid Overlay */}
-                                <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridTemplateRows: 'repeat(3, 1fr)', border: '2px solid rgba(255, 255, 255, 0.8)' }}>
-                                    {[...Array(12)].map((_, i) => (
-                                        <div key={i} style={{ border: '1px solid rgba(255, 255, 255, 0.6)' }} />
+                                {/* Adjustable 4x3 Grid Overlay */}
+                                <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                                    <svg width="100%" height="100%" viewBox={`0 0 ${UI_WIDTH} ${UI_HEIGHT}`} style={{ position: 'absolute', inset: 0 }}>
+                                        <rect x="0" y="0" width={UI_WIDTH} height={UI_HEIGHT} fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="2" />
+                                        {gridCols.map((p, i) => (
+                                          <line key={'c'+i} x1={p * UI_WIDTH} y1="0" x2={p * UI_WIDTH} y2={UI_HEIGHT} stroke="rgba(255,255,255,0.7)" strokeWidth="2" />
+                                        ))}
+                                        {gridRows.map((p, i) => (
+                                          <line key={'r'+i} x1="0" y1={p * UI_HEIGHT} x2={UI_WIDTH} y2={p * UI_HEIGHT} stroke="rgba(255,255,255,0.7)" strokeWidth="2" />
+                                        ))}
+                                    </svg>
+                                    {gridCols.map((p, i) => (
+                                      <div key={'ch'+i} style={{ position: 'absolute', left: `calc(${p * 100}% - 6px)`, top: 0, bottom: 0, width: '12px', cursor: 'col-resize', zIndex: 5, pointerEvents: 'auto' }} onMouseDown={(e) => onGridLineDown('col', i, e)} />
+                                    ))}
+                                    {gridRows.map((p, i) => (
+                                      <div key={'rh'+i} style={{ position: 'absolute', left: 0, right: 0, top: `calc(${p * 100}% - 6px)`, height: '12px', cursor: 'row-resize', zIndex: 5, pointerEvents: 'auto' }} onMouseDown={(e) => onGridLineDown('row', i, e)} />
                                     ))}
                                 </div>
                             </>
@@ -378,7 +430,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                     </div>
                     {sourceImage && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {cropMode === 'grid' ? (
+                            {cropMode === 'gemini-grid' || cropMode === 'gpt-grid' ? (
                                 <>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>圖片縮放 (消除黑邊)</span>
@@ -529,7 +581,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                     {sourceImage && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             <button className="button success" style={{ width: '100%', padding: '0.75rem' }} onClick={executeProcess} disabled={isProcessing}>
-                                {isProcessing ? <span className="loader">處理中...</span> : <><Sparkles size={18} /> {cropMode === 'single' ? '裁切並去背 (加入預覽)' : '執行開始 (開始去背)'}</>}
+                                {isProcessing ? <span className="loader">處理中...</span> : <><Sparkles size={18} /> {cropMode === 'single' ? '裁切並去背' : '執行開始'}</>}
                             </button>
                             <button className="button secondary" style={{ width: '100%' }} onClick={() => { setSourceImage(null); setImageObj(null); setStems([]); }} disabled={isProcessing}>
                                 重新上傳
