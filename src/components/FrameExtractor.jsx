@@ -116,16 +116,47 @@ const FrameExtractor = ({ videoUrl, videoName, duration, onFramesExtracted, onGo
     a.click();
   };
 
-  const toggleSelect = (idx) => {
-    setSelected((prev) => prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]);
-  };
+  const TAB_W = 96;
+  const TAB_H = 74;
+  const LINE_W = 320;
+  const LINE_H = 270;
 
-  const handleDownloadSelected = async () => {
+  const resizeFrame = (src, w, h) => new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(src);
+    img.src = src;
+  });
+
+  const fileName = (idx, suffix) => `frame-${String(idx + 1).padStart(2, '0')}${suffix ? `-${suffix}` : ''}.png`;
+
+  const downloadSelected = async (mode) => {
     if (selected.length === 0) return;
     const chosen = selected.slice().sort((a, b) => a - b);
+    const isOriginal = mode === 'original';
+    const suffix = mode === 'tab' ? 'tab' : mode === 'line' ? '320x270' : '';
+
+    const buildSrc = async (frame) => {
+      if (isOriginal) return frame.displaySrc;
+      const size = mode === 'tab' ? { w: TAB_W, h: TAB_H } : { w: LINE_W, h: LINE_H };
+      return resizeFrame(frame.displaySrc, size.w, size.h);
+    };
 
     if (chosen.length === 1) {
-      downloadSingle(chosen[0]);
+      const frame = frames[chosen[0]];
+      if (!frame) return;
+      const src = await buildSrc(frame, chosen[0]);
+      const a = document.createElement('a');
+      a.href = src;
+      a.download = fileName(chosen[0], suffix);
+      a.click();
       return;
     }
 
@@ -133,16 +164,25 @@ const FrameExtractor = ({ videoUrl, videoName, duration, onFramesExtracted, onGo
     for (const idx of chosen) {
       const frame = frames[idx];
       if (!frame) continue;
-      const blob = await (await fetch(frame.displaySrc)).blob();
-      zip.file(`frame-${String(idx + 1).padStart(2, '0')}.png`, blob);
+      const src = await buildSrc(frame, idx);
+      const blob = await (await fetch(src)).blob();
+      zip.file(fileName(idx, suffix), blob);
     }
     const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `frames-${chosen.length}張.zip`;
+    a.download = `frames${suffix ? `-${suffix}` : ''}-${chosen.length}張.zip`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadSelected = () => downloadSelected('original');
+  const handleDownloadTabSelected = () => downloadSelected('tab');
+  const handleDownloadLineSelected = () => downloadSelected('line');
+
+  const toggleSelect = (idx) => {
+    setSelected((prev) => prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]);
   };
 
   const getTimeLabel = (seconds) => {
@@ -216,7 +256,13 @@ const FrameExtractor = ({ videoUrl, videoName, duration, onFramesExtracted, onGo
                 <span className="frame-count-text">已選 {selected.length} 張</span>
               )}
               <button className="button btn-uniform" onClick={handleDownloadSelected} disabled={selected.length === 0}>
-                <FileArchive size={16} /> 下載選取 ({selected.length})
+                <FileArchive size={16} /> 下載原圖尺寸
+              </button>
+              <button className="button btn-uniform" onClick={handleDownloadTabSelected} disabled={selected.length === 0}>
+                <Download size={16} /> 下載 tab (96x74)
+              </button>
+              <button className="button btn-uniform" onClick={handleDownloadLineSelected} disabled={selected.length === 0}>
+                <Download size={16} /> 下載 320x270
               </button>
             </div>
           </div>
