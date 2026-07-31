@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Video, Loader2, Trash2, Crop, Undo2, ImageIcon, Download, FileArchive } from 'lucide-react';
+import { Video, Loader2, Trash2, Crop, Undo2, ImageIcon, Download, FileArchive, Upload, Trash } from 'lucide-react';
 import JSZip from 'jszip';
 import CropModal from './CropModal';
 
@@ -26,7 +26,30 @@ const FrameExtractor = ({ videoUrl, videoName, duration, onFramesExtracted, onGo
   const [unifiedCrop, setUnifiedCrop] = useState(false);
   const [cropTarget, setCropTarget] = useState(null);
   const [selected, setSelected] = useState([]);
+  const [downloadAll, setDownloadAll] = useState(false);
   const videoRef = useRef(null);
+  const uploadRef = useRef(null);
+
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const readers = files.map((file) => new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => resolve(event.target.result);
+      reader.readAsDataURL(file);
+    }));
+    Promise.all(readers).then((dataUrls) => {
+      const newFrames = dataUrls.map((src, i) => ({
+        src,
+        displaySrc: src,
+        time: frames.length + i,
+      }));
+      const updated = [...frames, ...newFrames];
+      setFrames(updated);
+      onFramesExtracted?.(updated);
+    });
+    e.target.value = '';
+  };
 
   const extractFrames = () => {
     if (!videoUrl || duration <= 0) return;
@@ -138,8 +161,8 @@ const FrameExtractor = ({ videoUrl, videoName, duration, onFramesExtracted, onGo
   const fileName = (idx, suffix) => `frame-${String(idx + 1).padStart(2, '0')}${suffix ? `-${suffix}` : ''}.png`;
 
   const downloadSelected = async (mode) => {
-    if (selected.length === 0) return;
-    const chosen = selected.slice().sort((a, b) => a - b);
+    const chosen = (downloadAll ? frames.map((_, i) => i) : selected).slice().sort((a, b) => a - b);
+    if (chosen.length === 0) return;
     const isOriginal = mode === 'original';
     const suffix = mode === 'tab' ? 'tab' : mode === 'line' ? '320x270' : '';
 
@@ -247,26 +270,46 @@ const FrameExtractor = ({ videoUrl, videoName, duration, onFramesExtracted, onGo
         </div>
       </div>
 
-      {frames.length > 0 && (
-        <div style={{ marginTop: '1.5rem' }}>
-          <div className="frame-toolbar">
+      <div style={{ marginTop: '1.5rem' }}>
+        <div className="frame-toolbar">
+          <button className="button btn-uniform" onClick={() => uploadRef.current?.click()}>
+            <Upload size={16} /> 上傳圖片
+          </button>
+          <input ref={uploadRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleImageUpload} />
+          {frames.length > 0 && (
+          <>
             <span className="frame-count-text">共 {frames.length} 張影格</span>
             <div className="action-row" style={{ marginLeft: 'auto', gap: '0.5rem' }}>
-              {selected.length > 0 && (
+              <div className="toggle-unit">
+                <span>下載全部</span>
+                <button className={`toggle-switch ${downloadAll ? 'on' : ''}`} onClick={() => setDownloadAll(!downloadAll)}>
+                  <div className="toggle-knob" />
+                </button>
+              </div>
+              {!downloadAll && selected.length > 0 && (
                 <span className="frame-count-text">已選 {selected.length} 張</span>
               )}
-              <button className="button btn-uniform" onClick={handleDownloadSelected} disabled={selected.length === 0}>
+              <button className="button btn-uniform" onClick={handleDownloadSelected} disabled={selected.length === 0 && !downloadAll}>
                 <FileArchive size={16} /> 下載原圖尺寸
               </button>
-              <button className="button btn-uniform" onClick={handleDownloadTabSelected} disabled={selected.length === 0}>
+              <button className="button btn-uniform" onClick={handleDownloadTabSelected} disabled={selected.length === 0 && !downloadAll}>
                 <Download size={16} /> 下載 tab (96x74)
               </button>
-              <button className="button btn-uniform" onClick={handleDownloadLineSelected} disabled={selected.length === 0}>
+              <button className="button btn-uniform" onClick={handleDownloadLineSelected} disabled={selected.length === 0 && !downloadAll}>
                 <Download size={16} /> 下載 320x270
               </button>
+              <button className="button btn-uniform" onClick={() => { const kept = frames.filter((_, i) => !selected.includes(i)); setFrames(kept); setSelected([]); onFramesExtracted?.(kept); }} disabled={selected.length === 0}>
+                <Trash size={16} /> 刪除所選
+              </button>
+              <button className="button btn-uniform" onClick={() => { setFrames([]); setSelected([]); setUnifiedCrop(false); onFramesExtracted?.([]); }}>
+                <Trash2 size={16} /> 刪除全部
+              </button>
             </div>
-          </div>
+            </>
+          )}
+        </div>
 
+        {frames.length > 0 && (
           <div className="frame-grid">
             {frames.map((frame, idx) => (
               <div key={idx} className={`frame-item ${selected.includes(idx) ? 'selected' : ''}`}>
@@ -293,14 +336,14 @@ const FrameExtractor = ({ videoUrl, videoName, duration, onFramesExtracted, onGo
               </div>
             ))}
           </div>
-        </div>
-      )}
-
+        )}
+      </div>
     </div>
 
       {cropTarget !== null && (
         <CropModal
           imageSrc={frames[cropTarget]?.src}
+          frameNumber={cropTarget + 1}
           onConfirm={handleCropComplete}
           onCancel={() => setCropTarget(null)}
         />

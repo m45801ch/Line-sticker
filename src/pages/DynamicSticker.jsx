@@ -29,6 +29,7 @@ const DynamicSticker = () => {
 
   const handleFramesExtracted = (extractedFrames) => {
     setFrames(extractedFrames);
+    setProcessedFrames([]);
   };
 
   const handleFramesProcessed = (processed) => {
@@ -57,6 +58,12 @@ const DynamicSticker = () => {
     setActiveStep(4);
   };
 
+  const handleDeleteAll = () => {
+    setFrames([]);
+    setProcessedFrames([]);
+    setVideoInfo(null);
+  };
+
   const displayFrames = processedFrames.length > 0 ? processedFrames : frames;
 
   return (
@@ -74,12 +81,12 @@ const DynamicSticker = () => {
             key={step.id}
             className={`step-item ${activeStep === step.id ? 'active' : ''} ${activeStep > step.id ? 'completed' : ''}`}
             onClick={() => {
-              if (step.id < activeStep) setActiveStep(step.id);
+              if (step.id < activeStep || step.id === 2) setActiveStep(step.id);
               else if (step.id === 3 && frames.length > 0) setActiveStep(3);
               else if (step.id === 4 && canEnterStep4()) { setPackGateError(''); setActiveStep(4); }
               else if (step.id === 4) setPackGateError(`影格數需不超過 ${MAX_FRAMES} 張，目前 ${getPackFrameCount()} 張`);
             }}
-            style={{ cursor: (step.id < activeStep || (step.id === 3 && frames.length > 0) || (step.id === 4 && canEnterStep4())) ? 'pointer' : 'default' }}
+            style={{ cursor: (step.id < activeStep || step.id === 2 || (step.id === 3 && frames.length > 0) || (step.id === 4 && canEnterStep4())) ? 'pointer' : 'default' }}
           >
             <div className="step-circle">
               {activeStep > step.id ? <Check size={20} /> : step.icon}
@@ -99,11 +106,11 @@ const DynamicSticker = () => {
           <VideoUploader onVideoReady={handleVideoReady} />
         )}
 
-        {activeStep === 2 && videoInfo && (
+        {activeStep === 2 && (
           <FrameExtractor
-            videoUrl={videoInfo.url}
-            videoName={videoInfo.file?.name}
-            duration={videoInfo.duration}
+            videoUrl={videoInfo?.url}
+            videoName={videoInfo?.file?.name}
+            duration={videoInfo?.duration}
             onFramesExtracted={handleFramesExtracted}
             onGoToStep3={handleGoToStep3}
           />
@@ -112,8 +119,10 @@ const DynamicSticker = () => {
         {activeStep === 3 && (
           <BgRemover
             frames={frames}
+            initialResults={processedFrames}
             onFramesProcessed={handleFramesProcessed}
             onGoToStep4={handleGoToStep4}
+            onDeleteAll={handleDeleteAll}
           />
         )}
 

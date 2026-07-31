@@ -37,15 +37,57 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
     // Single crop resize via handle
     const [isResizing, setIsResizing] = useState(false);
 
+    // Custom grid settings
+    const [customW, setCustomW] = useState(1600);
+    const [customH, setCustomH] = useState(1200);
+    const [customCols, setCustomCols] = useState(4);
+    const [customRows, setCustomRows] = useState(3);
+
     const containerRef = useRef(null);
 
+    const isGridMode = () => ['gemini-grid', 'gpt-grid', 'gpt9-grid', 'custom'].includes(cropMode);
+
     // Grid dimensions based on mode
-    const GRID_WIDTH = cropMode === 'gpt-grid' ? 2048 : 2560;
-    const GRID_HEIGHT = cropMode === 'gpt-grid' ? 1152 : 1664;
+    const getGridDims = () => {
+        if (cropMode === 'gpt-grid') return { w: 2048, h: 1152 };
+        if (cropMode === 'gpt9-grid') return { w: 1448, h: 1086 };
+        if (cropMode === 'custom') return { w: customW, h: customH };
+        return { w: 2560, h: 1664 };
+    };
+    const GRID_WIDTH = getGridDims().w;
+    const GRID_HEIGHT = getGridDims().h;
 
     // UI Container dimensions (scaled down for display)
     const UI_WIDTH = 560;
     const UI_HEIGHT = Math.round(UI_WIDTH * (GRID_HEIGHT / GRID_WIDTH));
+
+    // Generate default grid lines for a given cols/rows count
+    const genGridLines = (cols, rows) => {
+        const newCols = [];
+        for (let i = 1; i < cols; i++) newCols.push(i / cols);
+        const newRows = [];
+        for (let i = 1; i < rows; i++) newRows.push(i / rows);
+        return { cols: newCols, rows: newRows };
+    };
+
+    const handleModeChange = (mode) => {
+        setCropMode(mode);
+        setPosition({ x: 0, y: 0 });
+        setScale(1);
+        if (mode === 'gpt9-grid') {
+            const { cols, rows } = genGridLines(3, 3);
+            setGridCols(cols);
+            setGridRows(rows);
+        } else if (mode === 'custom') {
+            const { cols, rows } = genGridLines(customCols, customRows);
+            setGridCols(cols);
+            setGridRows(rows);
+        } else {
+            const { cols, rows } = genGridLines(4, 3);
+            setGridCols(cols);
+            setGridRows(rows);
+        }
+    };
 
     // Handle initial upload
     const handleUpload = (e) => {
@@ -59,6 +101,10 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                 setImageObj(img);
                 setSourceImage(event.target.result);
                 setStems([]); // Clear old previews
+
+                // Auto-detect uploaded image dimensions as custom defaults
+                setCustomW(img.naturalWidth || img.width);
+                setCustomH(img.naturalHeight || img.height);
 
                 // Auto-scale to fill the frame
                 const scaleX = GRID_WIDTH / img.width;
@@ -77,7 +123,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
         if (!imageObj) return;
 
         setIsProcessing(true);
-        if (cropMode === 'gemini-grid' || cropMode === 'gpt-grid') {
+        if (isGridMode()) {
             setStems([]);
         }
 
@@ -135,7 +181,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
 
         const newStems = [];
 
-        if (cropMode === 'gemini-grid' || cropMode === 'gpt-grid') {
+        if (isGridMode()) {
             const colBoundaries = [0, ...gridCols, 1].map(v => Math.round(v * GRID_WIDTH));
             const rowBoundaries = [0, ...gridRows, 1].map(v => Math.round(v * GRID_HEIGHT));
 
@@ -241,7 +287,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
 
     const onMouseDown = (e) => {
         setIsDragging(true);
-        if (cropMode === 'gemini-grid' || cropMode === 'gpt-grid') {
+        if (isGridMode()) {
             const ratio = GRID_WIDTH / UI_WIDTH;
             setDragStart({ x: e.clientX * ratio - position.x, y: e.clientY * ratio - position.y });
         } else {
@@ -279,7 +325,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
             return;
         }
         if (!isDragging) return;
-        if (cropMode === 'gemini-grid' || cropMode === 'gpt-grid') {
+        if (isGridMode()) {
             const ratio = GRID_WIDTH / UI_WIDTH;
             setPosition({
                 x: e.clientX * ratio - dragStart.x,
@@ -312,25 +358,39 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
             <div className="glass-panel" style={{ display: 'flex', gap: '1.5rem', padding: '1.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                 {/* Left Side: Editor */}
                 <div style={{ flexShrink: 0, width: `${UI_WIDTH}px`, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                         <button
                             className={`button ${cropMode === 'gemini-grid' ? 'primary' : 'secondary'}`}
-                            onClick={() => setCropMode('gemini-grid')}
-                            style={{ flex: 1, fontSize: '0.75rem' }}
+                            onClick={() => handleModeChange('gemini-grid')}
+                            style={{ flex: 1, minWidth: '110px', fontSize: '0.72rem' }}
                         >
-                            4x3 網格 (for Gemini)
+                            4x3 Gemini
                         </button>
                         <button
                             className={`button ${cropMode === 'gpt-grid' ? 'primary' : 'secondary'}`}
-                            onClick={() => setCropMode('gpt-grid')}
-                            style={{ flex: 1, fontSize: '0.75rem' }}
+                            onClick={() => handleModeChange('gpt-grid')}
+                            style={{ flex: 1, minWidth: '110px', fontSize: '0.72rem' }}
                         >
-                            4x3 網格 (for GPT)
+                            4x3 GPT
+                        </button>
+                        <button
+                            className={`button ${cropMode === 'gpt9-grid' ? 'primary' : 'secondary'}`}
+                            onClick={() => handleModeChange('gpt9-grid')}
+                            style={{ flex: 1, minWidth: '110px', fontSize: '0.72rem' }}
+                        >
+                            3x3 GPT 1448x1086
+                        </button>
+                        <button
+                            className={`button ${cropMode === 'custom' ? 'primary' : 'secondary'}`}
+                            onClick={() => handleModeChange('custom')}
+                            style={{ flex: 1, minWidth: '110px', fontSize: '0.72rem' }}
+                        >
+                            自訂版面
                         </button>
                         <button
                             className={`button ${cropMode === 'single' ? 'primary' : 'secondary'}`}
-                            onClick={() => setCropMode('single')}
-                            style={{ flex: 1, fontSize: '0.75rem' }}
+                            onClick={() => handleModeChange('single')}
+                            style={{ flex: 1, minWidth: '110px', fontSize: '0.72rem' }}
                         >
                             單格裁切
                         </button>
@@ -361,7 +421,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                                     <input type="file" hidden accept="image/*" onChange={handleUpload} />
                                 </label>
                             </div>
-                        ) : (cropMode === 'gemini-grid' || cropMode === 'gpt-grid') ? (
+                        ) : (isGridMode()) ? (
                             <>
                                 {/* Image representation */}
                                 <img
@@ -443,8 +503,29 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                     </div>
                     {sourceImage && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {cropMode === 'gemini-grid' || cropMode === 'gpt-grid' ? (
+                            {isGridMode() ? (
                                 <>
+                                    {cropMode === 'custom' && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                                            {imageObj && (
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--primary-color)' }}>
+                                                    上傳圖片尺寸：{imageObj.naturalWidth || imageObj.width} × {imageObj.naturalHeight || imageObj.height} px
+                                                </div>
+                                            )}
+                                            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>寬</label>
+                                                <input type="number" min="100" max="4000" value={customW} onChange={(e) => setCustomW(Math.max(100, Number(e.target.value) || 100))} style={{ width: '70px', background: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.25rem 0.4rem', borderRadius: '0.25rem', fontSize: '0.75rem' }} />
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>高</label>
+                                                <input type="number" min="100" max="4000" value={customH} onChange={(e) => setCustomH(Math.max(100, Number(e.target.value) || 100))} style={{ width: '70px', background: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.25rem 0.4rem', borderRadius: '0.25rem', fontSize: '0.75rem' }} />
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>直線</label>
+                                                <input type="number" min="2" max="8" value={customCols} onChange={(e) => { const v = Math.max(2, Math.min(8, Number(e.target.value) || 2)); setCustomCols(v); const { cols, rows } = genGridLines(v, customRows); setGridCols(cols); setGridRows(rows); }} style={{ width: '50px', background: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.25rem 0.4rem', borderRadius: '0.25rem', fontSize: '0.75rem' }} />
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>橫線</label>
+                                                <input type="number" min="2" max="8" value={customRows} onChange={(e) => { const v = Math.max(2, Math.min(8, Number(e.target.value) || 2)); setCustomRows(v); const { cols, rows } = genGridLines(customCols, v); setGridCols(cols); setGridRows(rows); }} style={{ width: '50px', background: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.25rem 0.4rem', borderRadius: '0.25rem', fontSize: '0.75rem' }} />
+                                            </div>
+                                        </div>
+                                    )}
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>圖片縮放 (消除黑邊)</span>
                                         <span style={{ fontSize: '0.8rem', color: 'var(--primary-color)' }}>{(scale * 100).toFixed(0)}%</span>
@@ -456,7 +537,7 @@ const ImageProcessor = ({ onProcessed, onGoToStep4 }) => {
                                             onChange={(e) => setScale(parseFloat(e.target.value))}
                                             style={{ flex: 1, accentColor: 'var(--primary-color)' }}
                                         />
-                                        <button className="num-btn" style={{ fontSize: '0.7rem', width: '2rem', height: '1.6rem' }} onClick={() => { setScale(1); setGridCols([0.25, 0.5, 0.75]); setGridRows([0.333, 0.667]); setPosition({ x: 0, y: 0 }); }} title="復原預設">↺</button>
+                                        <button className="num-btn" style={{ fontSize: '0.7rem', width: '2rem', height: '1.6rem' }} onClick={() => { const def = cropMode === 'gpt9-grid' ? genGridLines(3, 3) : cropMode === 'custom' ? genGridLines(customCols, customRows) : genGridLines(4, 3); setScale(1); setGridCols(def.cols); setGridRows(def.rows); setPosition({ x: 0, y: 0 }); }} title="復原預設">↺</button>
                                     </div>
                                 </>
                             ) : (

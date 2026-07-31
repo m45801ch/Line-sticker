@@ -249,8 +249,8 @@ const WatermarkRemover = () => {
                 padding: '3rem 2rem',
                 textAlign: 'center',
                 border: '2px dashed var(--primary-color)',
-                backgroundColor: '#0a0f1d',
-                color: 'white',
+                backgroundColor: '#faf7f1',
+                color: 'var(--text-primary)',
                 transition: 'all 0.3s ease',
                 position: 'relative'
             }}>
@@ -396,8 +396,8 @@ const WatermarkRemover = () => {
                             style={{
                                 padding: '1rem',
                                 fontSize: '1rem',
-                                backgroundColor: '#111827',
-                                color: 'white',
+                                backgroundColor: 'var(--secondary-color)',
+                                color: '#fff',
                                 fontWeight: 600,
                                 borderRadius: '0.5rem',
                                 display: 'flex',

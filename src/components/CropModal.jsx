@@ -31,7 +31,7 @@ const computeCenteredSelection = (displayW, displayH, ratioVal) => {
   return { x: (displayW - w) / 2, y: (displayH - h) / 2, w, h };
 };
 
-const CropModal = ({ imageSrc, onConfirm, onCancel }) => {
+const CropModal = ({ imageSrc, frameNumber, onConfirm, onCancel }) => {
   const [ratio, setRatio] = useState('free');
   const [customW, setCustomW] = useState(16);
   const [customH, setCustomH] = useState(9);
@@ -218,7 +218,7 @@ const CropModal = ({ imageSrc, onConfirm, onCancel }) => {
     <div className="crop-modal-overlay">
       <div className="crop-modal">
         <div className="crop-modal-header">
-          <h3><Crop size={18} /> 裁切圖片</h3>
+          <h3><Crop size={18} /> 裁切圖片 {frameNumber ? `（第 ${frameNumber} 張）` : ''}</h3>
           <button className="crop-close-btn" onClick={onCancel}><X size={20} /></button>
         </div>
 

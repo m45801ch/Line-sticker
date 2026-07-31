@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Wand2, Eraser, Undo2, Save, Pipette } from 'lucide-react';
+import { X, Wand2, Eraser, Undo2, Save, Pipette, Square } from 'lucide-react';
 
 const hexToRgb = (hex) => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -15,7 +15,7 @@ const rgbToHex = (r, g, b) => {
 };
 
 const previewBgMap = {
-  grid: 'repeating-conic-gradient(#1a1a1a 0% 25%, #222 0% 50%) 50% / 20px 20px',
+  grid: 'repeating-conic-gradient(#e8e8e8 0% 25%, #d8d8d8 0% 50%) 50% / 20px 20px',
   white: '#ffffff',
   black: '#000000',
   blue: '#1e90ff',
@@ -48,8 +48,8 @@ const applyChromaKey = (ctx, width, height, targetRGB, tolerance, smoothness) =>
 
 const DEFAULT_COLOR = { r: 0, g: 255, b: 0 };
 
-const FrameEditor = ({ imageSrc, previewBg = 'grid', onSave, onCancel }) => {
-  const [tool, setTool] = useState('wand');
+const FrameEditor = ({ imageSrc, previewBg = 'grid', frameNumber, allFrameSrcs = [], onSave, onCancel }) => {
+  const [tool, setTool] = useState('eraser');
   const [brushSize, setBrushSize] = useState(20);
   const [tolerance, setTolerance] = useState(120);
   const [smoothness, setSmoothness] = useState(8);
@@ -60,6 +60,12 @@ const FrameEditor = ({ imageSrc, previewBg = 'grid', onSave, onCancel }) => {
   const [zoom, setZoom] = useState(1);
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
+  const [rectStart, setRectStart] = useState(null);
+  const [rectCurrent, setRectCurrent] = useState(null);
+  const [applyAll, setApplyAll] = useState(false);
+  const rectStartRef = useRef(null);
+  const rectCurrentRef = useRef(null);
+  const allCanvasesRef = useRef([]);
   const canvasRef = useRef(null);
   const viewportRef = useRef(null);
   const dragStartRef = useRef(null);
@@ -78,6 +84,29 @@ const FrameEditor = ({ imageSrc, previewBg = 'grid', onSave, onCancel }) => {
     };
     img.src = imageSrc;
   }, [imageSrc]);
+
+  useEffect(() => {
+    if (!applyAll || allFrameSrcs.length === 0) { allCanvasesRef.current = []; return; }
+    let cancelled = false;
+    Promise.all(allFrameSrcs.map((src) => new Promise((resolve) => {
+      const img = new Image();
+      const finish = () => resolve(img);
+      img.onload = finish;
+      img.onerror = finish;
+      img.src = src || '';
+    }))).then((imgs) => {
+      if (cancelled) return;
+      allCanvasesRef.current = imgs.map((img) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || 1;
+        canvas.height = img.naturalHeight || 1;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        return canvas;
+      });
+    });
+    return () => { cancelled = true; };
+  }, [applyAll, allFrameSrcs]);
 
   const saveState = () => {
     const canvas = canvasRef.current;
@@ -117,7 +146,10 @@ const FrameEditor = ({ imageSrc, previewBg = 'grid', onSave, onCancel }) => {
   };
 
   const handleMouseDown = (e) => {
-    if (tool === 'eraser') {
+    const currentTool = tool;
+    e.preventDefault();
+
+    if (currentTool === 'eraser') {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const pos = getCanvasPos(e);
@@ -125,63 +157,144 @@ const FrameEditor = ({ imageSrc, previewBg = 'grid', onSave, onCancel }) => {
       saveState();
       setIsDrawing(true);
       eraseAt(ctx, pos.x, pos.y);
-      return;
-    }
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
-    panStartRef.current = { x: panX, y: panY };
-  };
-
-  const handleMouseMove = (e) => {
-    const rect = viewportRef.current?.getBoundingClientRect();
-    if (rect) {
-      setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-    }
-    if (tool === 'eraser' && isDrawing) {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+    } else if (currentTool === 'rect') {
       const pos = getCanvasPos(e);
-      const ctx = canvas.getContext('2d');
-      eraseAt(ctx, pos.x, pos.y);
-      return;
+      const vpRect = viewportRef.current?.getBoundingClientRect();
+      const vpPos = vpRect ? { x: e.clientX - vpRect.left, y: e.clientY - vpRect.top } : pos;
+      const start = { canvas: pos, viewport: vpPos };
+      rectStartRef.current = start;
+      rectCurrentRef.current = start;
+      setRectStart(start);
+      setRectCurrent(start);
+    } else {
+      dragStartRef.current = { x: e.clientX, y: e.clientY };
+      panStartRef.current = { x: panX, y: panY };
     }
-    if (tool !== 'eraser' && dragStartRef.current) {
-      const dx = e.clientX - dragStartRef.current.x;
-      const dy = e.clientY - dragStartRef.current.y;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-        setPanX(panStartRef.current.x + dx);
-        setPanY(panStartRef.current.y + dy);
+
+    const onMove = (ev) => {
+      const vpRect = viewportRef.current?.getBoundingClientRect();
+      const overCanvas = vpRect && ev.clientX >= vpRect.left && ev.clientX <= vpRect.right && ev.clientY >= vpRect.top && ev.clientY <= vpRect.bottom;
+      if (overCanvas && vpRect) {
+        setMousePos({ x: ev.clientX - vpRect.left, y: ev.clientY - vpRect.top });
+      } else {
+        setMousePos(null);
       }
-    }
+
+      if (currentTool === 'eraser') {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const pos = getCanvasPos(ev);
+        const ctx = canvas.getContext('2d');
+        eraseAt(ctx, pos.x, pos.y);
+        if (applyAll) {
+          const w = canvas.width;
+          const h = canvas.height;
+          allCanvasesRef.current.forEach((c) => {
+            if (c === canvas) return;
+            const cctx = c.getContext('2d');
+            eraseAt(cctx, Math.round(pos.x * (c.width / w)), Math.round(pos.y * (c.height / h)));
+          });
+        }
+      } else if (currentTool === 'rect') {
+        const pos = getCanvasPos(ev);
+        const vp = viewportRef.current?.getBoundingClientRect();
+        const vpPos = vp ? { x: ev.clientX - vp.left, y: ev.clientY - vp.top } : pos;
+        const cur = { canvas: pos, viewport: vpPos };
+        rectCurrentRef.current = cur;
+        setRectCurrent(cur);
+      } else if (dragStartRef.current) {
+        const dx = ev.clientX - dragStartRef.current.x;
+        const dy = ev.clientY - dragStartRef.current.y;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+          setPanX(panStartRef.current.x + dx);
+          setPanY(panStartRef.current.y + dy);
+        }
+      }
+    };
+
+    const onUp = (ev) => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      setIsDrawing(false);
+
+      if (currentTool === 'rect' && rectStartRef.current && rectCurrentRef.current) {
+        const s = rectStartRef.current;
+        const c = rectCurrentRef.current;
+        const x = Math.min(s.canvas.x, c.canvas.x);
+        const y = Math.min(s.canvas.y, c.canvas.y);
+        const w = Math.abs(c.canvas.x - s.canvas.x);
+        const h = Math.abs(c.canvas.y - s.canvas.y);
+        rectStartRef.current = null;
+        rectCurrentRef.current = null;
+        setRectStart(null);
+        setRectCurrent(null);
+        if (w > 3 && h > 3) {
+          const canvas = canvasRef.current;
+          if (canvas) {
+            const ctx = canvas.getContext('2d');
+            saveState();
+            ctx.save();
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.clearRect(x, y, w, h);
+            ctx.restore();
+          }
+          if (applyAll) {
+            const cw = canvas ? canvas.width : 1;
+            const ch = canvas ? canvas.height : 1;
+            allCanvasesRef.current.forEach((c) => {
+              if (c === canvas) return;
+              const cctx = c.getContext('2d');
+              cctx.save();
+              cctx.globalCompositeOperation = 'destination-out';
+              cctx.clearRect(
+                Math.round(x * (c.width / cw)),
+                Math.round(y * (c.height / ch)),
+                Math.round(w * (c.width / cw)),
+                Math.round(h * (c.height / ch))
+              );
+              cctx.restore();
+            });
+          }
+        }
+        return;
+      }
+
+      if (currentTool !== 'eraser' && currentTool !== 'rect' && dragStartRef.current) {
+        const dx = ev.clientX - dragStartRef.current.x;
+        const dy = ev.clientY - dragStartRef.current.y;
+        dragStartRef.current = null;
+        if (Math.abs(dx) <= 3 && Math.abs(dy) <= 3) {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const pos = getCanvasPos(ev);
+          const ctx = canvas.getContext('2d');
+          if (currentTool === 'pipette') {
+            const pixel = ctx.getImageData(pos.x, pos.y, 1, 1).data;
+            setSelectedColor({ r: pixel[0], g: pixel[1], b: pixel[2] });
+          } else if (currentTool === 'wand') {
+            saveState();
+            const pixel = ctx.getImageData(pos.x, pos.y, 1, 1).data;
+            const target = { r: pixel[0], g: pixel[1], b: pixel[2] };
+            setSelectedColor(target);
+            applyChromaKey(ctx, canvas.width, canvas.height, target, tolerance, smoothness);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
   };
 
   const handleMouseLeave = () => {
     setMousePos(null);
     setIsDrawing(false);
-    dragStartRef.current = null;
   };
 
-  const handleMouseUp = (e) => {
-    setIsDrawing(false);
-    if (tool !== 'eraser' && dragStartRef.current) {
-      const dx = e.clientX - dragStartRef.current.x;
-      const dy = e.clientY - dragStartRef.current.y;
-      dragStartRef.current = null;
-      if (Math.abs(dx) <= 3 && Math.abs(dy) <= 3) {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const pos = getCanvasPos(e);
-        const ctx = canvas.getContext('2d');
-        if (tool === 'pipette') {
-          const pixel = ctx.getImageData(pos.x, pos.y, 1, 1).data;
-          setSelectedColor({ r: pixel[0], g: pixel[1], b: pixel[2] });
-        } else if (tool === 'wand') {
-          saveState();
-          const pixel = ctx.getImageData(pos.x, pos.y, 1, 1).data;
-          const target = { r: pixel[0], g: pixel[1], b: pixel[2] };
-          setSelectedColor(target);
-          applyChromaKey(ctx, canvas.width, canvas.height, target, tolerance, smoothness);
-        }
-      }
+  const handleHoverMove = (e) => {
+    const vpRect = viewportRef.current?.getBoundingClientRect();
+    if (vpRect) {
+      setMousePos({ x: e.clientX - vpRect.left, y: e.clientY - vpRect.top });
     }
   };
 
@@ -195,7 +308,11 @@ const FrameEditor = ({ imageSrc, previewBg = 'grid', onSave, onCancel }) => {
   };
 
   const handleSave = () => {
-    onSave(canvasRef.current?.toDataURL('image/png'));
+    if (applyAll && allCanvasesRef.current.length > 0) {
+      onSave({ allSrcs: allCanvasesRef.current.map((c) => c.toDataURL('image/png')) });
+    } else {
+      onSave(canvasRef.current?.toDataURL('image/png'));
+    }
   };
 
   const colorHex = rgbToHex(selectedColor.r, selectedColor.g, selectedColor.b);
@@ -205,7 +322,7 @@ const FrameEditor = ({ imageSrc, previewBg = 'grid', onSave, onCancel }) => {
     <div className="crop-modal-overlay">
       <div className="frame-editor">
         <div className="frame-editor-header">
-          <h3>單張去背編輯器</h3>
+          <h3>單張去背編輯器 {frameNumber ? `（第 ${frameNumber} 張）` : ''}</h3>
           <button className="crop-close-btn" onClick={onCancel}><X size={20} /></button>
         </div>
 
@@ -218,6 +335,9 @@ const FrameEditor = ({ imageSrc, previewBg = 'grid', onSave, onCancel }) => {
           </button>
           <button className={`editor-tool-btn ${tool === 'eraser' ? 'active' : ''}`} onClick={() => setTool('eraser')} title="橡皮擦">
             <Eraser size={16} /> 橡皮擦
+          </button>
+          <button className={`editor-tool-btn ${tool === 'rect' ? 'active' : ''}`} onClick={() => setTool('rect')} title="選取框去背">
+            <Square size={16} /> 選取框
           </button>
 
           {tool === 'eraser' && (
@@ -248,6 +368,15 @@ const FrameEditor = ({ imageSrc, previewBg = 'grid', onSave, onCancel }) => {
             <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>{colorHex}</span>
           </div>
 
+          {allFrameSrcs.length > 1 && (
+            <div className="toggle-unit">
+              <span>套用全部</span>
+              <button className={`toggle-switch ${applyAll ? 'on' : ''}`} onClick={() => setApplyAll(!applyAll)}>
+                <div className="toggle-knob" />
+              </button>
+            </div>
+          )}
+
           <div className="editor-separator" />
           <div className="editor-zoom-controls">
             <button className="zoom-btn" onClick={() => setZoom(z => Math.max(0.3, z - 0.2))}>−</button>
@@ -266,13 +395,12 @@ const FrameEditor = ({ imageSrc, previewBg = 'grid', onSave, onCancel }) => {
               ref={canvasRef}
               className="frame-editor-canvas"
               style={{
-                cursor: tool === 'wand' ? 'crosshair' : tool === 'eraser' ? 'none' : 'crosshair',
+                cursor: tool === 'eraser' ? 'none' : 'crosshair',
                 transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
                 transformOrigin: 'center center',
               }}
               onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
+              onMouseMove={handleHoverMove}
               onMouseLeave={handleMouseLeave}
             />
             {tool === 'eraser' && mousePos && (
@@ -283,7 +411,14 @@ const FrameEditor = ({ imageSrc, previewBg = 'grid', onSave, onCancel }) => {
                 top: `${mousePos.y - (brushSize * zoom) / 2}px`,
               }} />
             )}
-            
+            {tool === 'rect' && rectStart && rectCurrent && (
+              <div className="rect-select-overlay" style={{
+                left: Math.min(rectStart.viewport.x, rectCurrent.viewport.x),
+                top: Math.min(rectStart.viewport.y, rectCurrent.viewport.y),
+                width: Math.abs(rectCurrent.viewport.x - rectStart.viewport.x),
+                height: Math.abs(rectCurrent.viewport.y - rectStart.viewport.y),
+              }} />
+            )}
           </div>
         </div>
 
@@ -291,6 +426,7 @@ const FrameEditor = ({ imageSrc, previewBg = 'grid', onSave, onCancel }) => {
           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
             {tool === 'pipette' ? '點擊圖片吸取顏色 (不套用去背)' :
              tool === 'wand' ? '點擊背景色，自動去背' :
+             tool === 'rect' ? '拖曳拉出選取框，清除框內區域' :
              '拖曳塗抹，移除不需要的部分'}
           </div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>

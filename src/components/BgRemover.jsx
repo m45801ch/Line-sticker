@@ -50,7 +50,7 @@ const applyChromaKey = (ctx, width, height, settings) => {
   ctx.putImageData(imageData, 0, 0);
 };
 
-const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
+const BgRemover = ({ frames, initialResults = [], onFramesProcessed, onGoToStep4, onDeleteAll }) => {
   const [bgColor, setBgColor] = useState('#00FF00');
   const [tolerance, setTolerance] = useState(120);
   const [smoothness, setSmoothness] = useState(8);
@@ -58,14 +58,16 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
   const [enableDespill, setEnableDespill] = useState(true);
   const [despillStrength, setDespillStrength] = useState(100);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState(initialResults && initialResults.length > 0 ? initialResults : []);
   const [previewBg, setPreviewBg] = useState('grid');
   const [editTarget, setEditTarget] = useState(null);
   const [deletedIndices, setDeletedIndices] = useState([]);
   const [extraFrames, setExtraFrames] = useState([]);
   const [selected, setSelected] = useState([]);
+  const [downloadAll, setDownloadAll] = useState(false);
   const snapshotRef = useRef(null);
   const uploadRef = useRef(null);
+  const dragIndexRef = useRef(null);
 
   const allFrames = frames.length > 0 ? [...frames, ...extraFrames] : extraFrames;
 
@@ -76,19 +78,30 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
       const url = URL.createObjectURL(file);
       return { src: url, displaySrc: url, time: i, uploaded: true };
     });
-    setExtraFrames((prev) => [...prev, ...added]);
-    setResults([]);
+    const newExtra = [...extraFrames, ...added];
+    setExtraFrames(newExtra);
+
+    if (results.length > 0) {
+      const updated = [...results, ...added.map((f) => ({ ...f, processedSrc: f.displaySrc || f.src }))];
+      setResults(updated);
+      onFramesProcessed?.(updated);
+    } else {
+      const base = displayList;
+      const combined = [...base, ...added];
+      onFramesProcessed?.(combined.map((f) => ({ ...f, processedSrc: f.displaySrc || f.src })));
+    }
     setEditTarget(null);
     e.target.value = '';
   };
 
   const processAll = async () => {
-    if (!allFrames || allFrames.length === 0) return;
+    const sourceFrames = displayList.map((f) => ({ ...f, src: f.displaySrc || f.src }));
+    if (!sourceFrames || sourceFrames.length === 0) return;
     snapshotRef.current = results.length > 0 ? [...results] : null;
     setIsProcessing(true);
     await new Promise(r => setTimeout(r, 50));
 
-    const processed = await Promise.all(allFrames.map((frame) => {
+    const processed = await Promise.all(sourceFrames.map((frame) => {
       return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => {
@@ -112,12 +125,13 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
     }));
 
     setResults(processed);
+    setDeletedIndices([]);
     setIsProcessing(false);
     onFramesProcessed?.(processed);
   };
 
   const getPreviewBgStyle = () => {
-    if (previewBg === 'grid') return 'repeating-conic-gradient(#1a1a1a 0% 25%, #222 0% 50%) 50% / 20px 20px';
+    if (previewBg === 'grid') return 'repeating-conic-gradient(#e8e8e8 0% 25%, #d8d8d8 0% 50%) 50% / 20px 20px';
     return previewBg;
   };
 
@@ -134,25 +148,87 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
     } else {
       updated = [...results];
     }
-    updated[idx] = { ...updated[idx], processedSrc: editedSrc };
+
+    if (editedSrc && editedSrc.allSrcs) {
+      editedSrc.allSrcs.forEach((src, i) => {
+        if (updated[i]) updated[i] = { ...updated[i], processedSrc: src };
+      });
+    } else {
+      updated[idx] = { ...updated[idx], processedSrc: editedSrc };
+    }
+
     setResults(updated);
     setEditTarget(null);
     onFramesProcessed?.(updated);
   };
 
   const handleDeleteFrame = (idx) => {
-    const newDeleted = [...deletedIndices, idx];
-    setDeletedIndices(newDeleted);
-    setSelected((prev) => prev.filter((i) => i !== idx).map((i) => (i > idx ? i - 1 : i)));
     if (results.length > 0) {
-      const kept = results.filter((_, i) => !newDeleted.includes(i));
+      const kept = results.filter((_, i) => i !== idx);
       setResults(kept);
+      setDeletedIndices([]);
+      setSelected([]);
       onFramesProcessed?.(kept);
+    } else {
+      const newDeleted = [...deletedIndices, idx];
+      setDeletedIndices(newDeleted);
+      setSelected((prev) => prev.filter((i) => i !== idx).map((i) => (i > idx ? i - 1 : i)));
     }
   };
 
   const toggleSelect = (idx) => {
     setSelected((prev) => prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]);
+  };
+
+  const handleDeleteSelected = () => {
+    if (selected.length === 0) return;
+    if (results.length > 0) {
+      const kept = results.filter((_, i) => !selected.includes(i));
+      setResults(kept);
+      setDeletedIndices([]);
+      setSelected([]);
+      onFramesProcessed?.(kept);
+    } else {
+      const source = allFrames;
+      const origIndices = [];
+      let displayIdx = 0;
+      for (let i = 0; i < source.length; i++) {
+        if (deletedIndices.includes(i)) continue;
+        if (selected.includes(displayIdx)) origIndices.push(i);
+        displayIdx++;
+      }
+      const newDeleted = [...new Set([...deletedIndices, ...origIndices])];
+      setDeletedIndices(newDeleted);
+      setSelected([]);
+    }
+  };
+
+  const handleDeleteAll = () => {
+    setExtraFrames([]);
+    setResults([]);
+    setDeletedIndices([]);
+    setSelected([]);
+    setEditTarget(null);
+    onDeleteAll?.();
+  };
+
+  const handleReorder = (from, to) => {
+    if (from === to) return;
+    if (results.length > 0) {
+      const arr = [...results];
+      const [moved] = arr.splice(from, 1);
+      arr.splice(to, 0, moved);
+      setResults(arr);
+      onFramesProcessed?.(arr);
+    } else {
+      const arr = [...displayList];
+      const [moved] = arr.splice(from, 1);
+      arr.splice(to, 0, moved);
+      const converted = arr.map((f) => ({ ...f, processedSrc: f.displaySrc || f.src }));
+      setResults(converted);
+      setDeletedIndices([]);
+      onFramesProcessed?.(converted);
+    }
   };
 
   const displayList = results.length > 0
@@ -181,7 +257,7 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
   });
 
   const downloadSelected = async (mode) => {
-    const chosen = selected.slice().sort((a, b) => a - b);
+    const chosen = (downloadAll ? displayList.map((_, i) => i) : selected).slice().sort((a, b) => a - b);
     if (chosen.length === 0) return;
     const isOriginal = mode === 'original';
     const suffix = mode === 'tab' ? 'tab' : mode === 'line' ? '320x270' : '';
@@ -302,7 +378,7 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
                     <Undo2 size={14} /> 復原
                   </button>
                 )}
-                {results.length > 0 && onGoToStep4 && (
+                {(results.length > 0 || allFrames.length > 0) && onGoToStep4 && (
                   <button className="button success btn-uniform" onClick={onGoToStep4}>
                     <Package size={14} /> 打包
                   </button>
@@ -318,24 +394,46 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
 
           <div className="frame-toolbar">
             <div className="action-row" style={{ marginLeft: 'auto', gap: '0.5rem' }}>
-              {selected.length > 0 && (
+              <div className="toggle-unit">
+                <span>下載全部</span>
+                <button className={`toggle-switch ${downloadAll ? 'on' : ''}`} onClick={() => setDownloadAll(!downloadAll)}>
+                  <div className="toggle-knob" />
+                </button>
+              </div>
+              {!downloadAll && selected.length > 0 && (
                 <span className="frame-count-text">已選 {selected.length} 張</span>
               )}
-              <button className="button btn-uniform" onClick={() => downloadSelected('original')} disabled={selected.length === 0}>
+              <button className="button btn-uniform" onClick={() => downloadSelected('original')} disabled={selected.length === 0 && !downloadAll}>
                 <FileArchive size={16} /> 下載原圖尺寸
               </button>
-              <button className="button btn-uniform" onClick={() => downloadSelected('tab')} disabled={selected.length === 0}>
+              <button className="button btn-uniform" onClick={() => downloadSelected('tab')} disabled={selected.length === 0 && !downloadAll}>
                 <Download size={16} /> 下載 tab (96x74)
               </button>
-              <button className="button btn-uniform" onClick={() => downloadSelected('line')} disabled={selected.length === 0}>
+              <button className="button btn-uniform" onClick={() => downloadSelected('line')} disabled={selected.length === 0 && !downloadAll}>
                 <Download size={16} /> 下載 320x270
+              </button>
+              <button className="button btn-uniform" onClick={handleDeleteSelected} disabled={selected.length === 0}>
+                <Trash2 size={16} /> 刪除所選
+              </button>
+              <button className="button btn-uniform" onClick={handleDeleteAll}>
+                <Trash2 size={16} /> 刪除全部
               </button>
             </div>
           </div>
 
           <div className="frame-grid">
             {displayList.map((frame, idx) => (
-              <div key={idx} className={`frame-item ${selected.includes(idx) ? 'selected' : ''}`} style={{ background: getPreviewBgStyle(), cursor: 'pointer' }} onClick={() => toggleSelect(idx)} title="點擊選取">
+              <div
+                key={idx}
+                className={`frame-item ${selected.includes(idx) ? 'selected' : ''}`}
+                style={{ background: getPreviewBgStyle(), cursor: 'pointer' }}
+                onClick={() => toggleSelect(idx)}
+                title="點擊選取，拖曳排序"
+                draggable
+                onDragStart={() => { dragIndexRef.current = idx; }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); handleReorder(dragIndexRef.current, idx); dragIndexRef.current = null; }}
+              >
                 <div className="frame-select-box" onClick={(e) => { e.stopPropagation(); toggleSelect(idx); }}>
                   <input type="checkbox" checked={selected.includes(idx)} onChange={() => toggleSelect(idx)} />
                 </div>
@@ -359,6 +457,8 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
         <FrameEditor
           imageSrc={displayList[editTarget]?.processedSrc || displayList[editTarget]?.displaySrc || displayList[editTarget]?.src}
           previewBg={previewBg}
+          frameNumber={editTarget + 1}
+          allFrameSrcs={displayList.map((f) => f.processedSrc || f.displaySrc || f.src)}
           onSave={handleEditorSave}
           onCancel={() => setEditTarget(null)}
         />
