@@ -917,6 +917,59 @@ body {
   background: rgba(255, 165, 0, 1);
 }
 
+.frame-download-btn {
+  position: absolute;
+  bottom: 0.25rem;
+  left: 0.25rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  border-radius: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+  color: white;
+  background: rgba(0, 128, 255, 0.8);
+}
+
+.frame-item:hover .frame-download-btn {
+  opacity: 1;
+}
+
+.frame-download-btn:hover {
+  background: rgba(0, 128, 255, 1);
+}
+
+.frame-select-box {
+  position: absolute;
+  top: 0.15rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.frame-item:hover .frame-select-box,
+.frame-item.selected .frame-select-box {
+  opacity: 1;
+}
+
+.frame-select-box input[type="checkbox"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  cursor: pointer;
+  accent-color: var(--primary-color);
+}
+
+.frame-item.selected {
+  outline: 2px solid var(--primary-color);
+  outline-offset: -2px;
+}
+
 .bg-settings-panel {
   background: var(--panel-bg);
   border: 1px solid var(--border-color);

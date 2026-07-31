@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { ImageIcon, Sparkles, Loader2, Edit3, Undo2, Package, Trash2 } from 'lucide-react';
+import { ImageIcon, Sparkles, Loader2, Edit3, Undo2, Package, Trash2, Upload } from 'lucide-react';
 import FrameEditor from './FrameEditor';
 
 const hexToRgb = (hex) => {
@@ -61,15 +61,32 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
   const [previewBg, setPreviewBg] = useState('grid');
   const [editTarget, setEditTarget] = useState(null);
   const [deletedIndices, setDeletedIndices] = useState([]);
+  const [extraFrames, setExtraFrames] = useState([]);
   const snapshotRef = useRef(null);
+  const uploadRef = useRef(null);
+
+  const allFrames = frames.length > 0 ? [...frames, ...extraFrames] : extraFrames;
+
+  const handleUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const added = files.map((file, i) => {
+      const url = URL.createObjectURL(file);
+      return { src: url, displaySrc: url, time: i, uploaded: true };
+    });
+    setExtraFrames((prev) => [...prev, ...added]);
+    setResults([]);
+    setEditTarget(null);
+    e.target.value = '';
+  };
 
   const processAll = async () => {
-    if (!frames || frames.length === 0) return;
+    if (!allFrames || allFrames.length === 0) return;
     snapshotRef.current = results.length > 0 ? [...results] : null;
     setIsProcessing(true);
     await new Promise(r => setTimeout(r, 50));
 
-    const processed = await Promise.all(frames.map((frame) => {
+    const processed = await Promise.all(allFrames.map((frame) => {
       return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => {
@@ -108,7 +125,7 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
 
     let updated;
     if (results.length === 0) {
-      updated = frames.map((f) => ({
+      updated = allFrames.map((f) => ({
         ...f,
         processedSrc: f.displaySrc || f.src,
       }));
@@ -133,7 +150,7 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
 
   const displayList = results.length > 0
     ? results.filter((_, i) => !deletedIndices.includes(i))
-    : frames.filter((_, i) => !deletedIndices.includes(i));
+    : allFrames.filter((_, i) => !deletedIndices.includes(i));
 
   return (
     <>
@@ -142,10 +159,18 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
         <ImageIcon size={20} /> 去背
       </h3>
 
-      {(!frames || frames.length === 0) ? (
-        <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>
-          請先回到 Step 2 擷取影格
-        </p>
+      {(!allFrames || allFrames.length === 0) ? (
+        <div>
+          <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>
+            請先回到 Step 2 擷取影格，或上傳自己的圖片
+          </p>
+          <div style={{ textAlign: 'center', paddingBottom: '1.5rem' }}>
+            <button className="button" onClick={() => uploadRef.current?.click()}>
+              <Upload size={16} /> 上傳圖片
+            </button>
+          </div>
+          <input ref={uploadRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleUpload} />
+        </div>
       ) : (
         <div>
           <div className="bg-settings-condensed">
@@ -200,6 +225,9 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
                 <input type="range" min="0" max="20" value={smoothness} onChange={(e) => setSmoothness(parseInt(e.target.value))} />
               </div>
               <div className="btn-group">
+                <button className="button btn-uniform" onClick={() => uploadRef.current?.click()}>
+                  <Upload size={14} /> 上傳圖片
+                </button>
                 <button className="button success btn-uniform" onClick={processAll} disabled={isProcessing}>
                   {isProcessing ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />} 全部去背
                 </button>
@@ -216,9 +244,10 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
               </div>
             </div>
           </div>
+          <input ref={uploadRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleUpload} />
 
           <h4 style={{ marginBottom: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '1rem' }}>
-            {results.length > 0 ? `去背結果（${results.length} 張）` : `原始截圖（${frames.length} 張）`}
+            {results.length > 0 ? `去背結果（${results.length} 張）` : `原始截圖（${allFrames.length} 張）`}
           </h4>
 
           <div className="frame-grid">

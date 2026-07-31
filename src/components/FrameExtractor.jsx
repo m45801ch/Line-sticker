@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { Video, Loader2, Trash2, Crop, Undo2, ImageIcon } from 'lucide-react';
+import { Video, Loader2, Trash2, Crop, Undo2, ImageIcon, Download, FileArchive } from 'lucide-react';
+import JSZip from 'jszip';
 import CropModal from './CropModal';
 
 const applyCropToImage = (src, crop) => {
@@ -24,6 +25,7 @@ const FrameExtractor = ({ videoUrl, videoName, duration, onFramesExtracted, onGo
   const [progress, setProgress] = useState(0);
   const [unifiedCrop, setUnifiedCrop] = useState(false);
   const [cropTarget, setCropTarget] = useState(null);
+  const [selected, setSelected] = useState([]);
   const videoRef = useRef(null);
 
   const extractFrames = () => {
@@ -72,6 +74,7 @@ const FrameExtractor = ({ videoUrl, videoName, duration, onFramesExtracted, onGo
   const handleDelete = (idx) => {
     const updated = frames.filter((_, i) => i !== idx);
     setFrames(updated);
+    setSelected((prev) => prev.filter((i) => i !== idx).map((i) => (i > idx ? i - 1 : i)));
     onFramesExtracted?.(updated);
   };
 
@@ -102,6 +105,44 @@ const FrameExtractor = ({ videoUrl, videoName, duration, onFramesExtracted, onGo
       onFramesExtracted?.(updated);
     }
     setCropTarget(null);
+  };
+
+  const downloadSingle = (idx) => {
+    const frame = frames[idx];
+    if (!frame) return;
+    const a = document.createElement('a');
+    a.href = frame.displaySrc;
+    a.download = `frame-${String(idx + 1).padStart(2, '0')}.png`;
+    a.click();
+  };
+
+  const toggleSelect = (idx) => {
+    setSelected((prev) => prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]);
+  };
+
+  const handleDownloadSelected = async () => {
+    if (selected.length === 0) return;
+    const chosen = selected.slice().sort((a, b) => a - b);
+
+    if (chosen.length === 1) {
+      downloadSingle(chosen[0]);
+      return;
+    }
+
+    const zip = new JSZip();
+    for (const idx of chosen) {
+      const frame = frames[idx];
+      if (!frame) continue;
+      const blob = await (await fetch(frame.displaySrc)).blob();
+      zip.file(`frame-${String(idx + 1).padStart(2, '0')}.png`, blob);
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `frames-${chosen.length}張.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const getTimeLabel = (seconds) => {
@@ -170,12 +211,23 @@ const FrameExtractor = ({ videoUrl, videoName, duration, onFramesExtracted, onGo
         <div style={{ marginTop: '1.5rem' }}>
           <div className="frame-toolbar">
             <span className="frame-count-text">共 {frames.length} 張影格</span>
+            <div className="action-row" style={{ marginLeft: 'auto', gap: '0.5rem' }}>
+              {selected.length > 0 && (
+                <span className="frame-count-text">已選 {selected.length} 張</span>
+              )}
+              <button className="button btn-uniform" onClick={handleDownloadSelected} disabled={selected.length === 0}>
+                <FileArchive size={16} /> 下載選取 ({selected.length})
+              </button>
+            </div>
           </div>
 
           <div className="frame-grid">
             {frames.map((frame, idx) => (
-              <div key={idx} className="frame-item">
-                <img src={frame.displaySrc} alt={`影格 ${idx + 1}`} />
+              <div key={idx} className={`frame-item ${selected.includes(idx) ? 'selected' : ''}`}>
+                <div className="frame-select-box" onClick={(e) => { e.stopPropagation(); toggleSelect(idx); }}>
+                  <input type="checkbox" checked={selected.includes(idx)} onChange={() => toggleSelect(idx)} />
+                </div>
+                <img src={frame.displaySrc} alt={`影格 ${idx + 1}`} onClick={() => toggleSelect(idx)} style={{ cursor: 'pointer' }} />
                 <span className="frame-time">{getTimeLabel(frame.time)}</span>
                 <span className="frame-index">#{idx + 1}</span>
                 <button className="frame-delete-btn" onClick={() => handleDelete(idx)} title="刪除">
@@ -188,6 +240,9 @@ const FrameExtractor = ({ videoUrl, videoName, duration, onFramesExtracted, onGo
                 )}
                 <button className="frame-crop-btn" onClick={() => setCropTarget(idx)} title="裁切">
                   <Crop size={12} />
+                </button>
+                <button className="frame-download-btn" onClick={() => downloadSingle(idx)} title="下載">
+                  <Download size={12} />
                 </button>
               </div>
             ))}

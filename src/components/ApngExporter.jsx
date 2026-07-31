@@ -82,6 +82,8 @@ const ApngExporter = ({ frames }) => {
 
   const getTargetSize = () => {
     if (outputSize === 'line') return { w: 320, h: 270 };
+    if (outputSize === 'main') return { w: 240, h: 240 };
+    if (outputSize === 'tab') return { w: 96, h: 74 };
     if (outputSize === 'custom') return { w: customW, h: customH };
     return null;
   };
@@ -222,9 +224,10 @@ const ApngExporter = ({ frames }) => {
 
   const handleDownload = () => {
     if (!previewUrl) return;
+    const typeLabel = outputSize === 'main' ? 'main' : outputSize === 'tab' ? 'tab' : 'line';
     const a = document.createElement('a');
     a.href = previewUrl;
-    a.download = 'line-sticker-animated.png';
+    a.download = `line-sticker-${typeLabel}-animated.png`;
     a.click();
   };
 
@@ -285,6 +288,12 @@ const ApngExporter = ({ frames }) => {
                 </button>
                 <button className={`apng-radio-btn ${outputSize === 'line' ? 'active' : ''}`} onClick={() => setOutputSize('line')}>
                   LINE 貼圖標準 (Max 320x270)
+                </button>
+                <button className={`apng-radio-btn ${outputSize === 'main' ? 'active' : ''}`} onClick={() => setOutputSize('main')}>
+                  main 主圖 (240x240)
+                </button>
+                <button className={`apng-radio-btn ${outputSize === 'tab' ? 'active' : ''}`} onClick={() => setOutputSize('tab')}>
+                  tab 標籤圖 (96x74)
                 </button>
                 <button className={`apng-radio-btn ${outputSize === 'custom' ? 'active' : ''}`} onClick={() => setOutputSize('custom')}>
                   自訂尺寸
