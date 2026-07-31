@@ -63,6 +63,7 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
   const [editTarget, setEditTarget] = useState(null);
   const [deletedIndices, setDeletedIndices] = useState([]);
   const [extraFrames, setExtraFrames] = useState([]);
+  const [selected, setSelected] = useState([]);
   const snapshotRef = useRef(null);
   const uploadRef = useRef(null);
 
@@ -142,11 +143,16 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
   const handleDeleteFrame = (idx) => {
     const newDeleted = [...deletedIndices, idx];
     setDeletedIndices(newDeleted);
+    setSelected((prev) => prev.filter((i) => i !== idx).map((i) => (i > idx ? i - 1 : i)));
     if (results.length > 0) {
       const kept = results.filter((_, i) => !newDeleted.includes(i));
       setResults(kept);
       onFramesProcessed?.(kept);
     }
+  };
+
+  const toggleSelect = (idx) => {
+    setSelected((prev) => prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]);
   };
 
   const displayList = results.length > 0
@@ -174,8 +180,9 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
     img.src = src;
   });
 
-  const downloadAll = async (mode) => {
-    if (displayList.length === 0) return;
+  const downloadSelected = async (mode) => {
+    const chosen = selected.slice().sort((a, b) => a - b);
+    if (chosen.length === 0) return;
     const isOriginal = mode === 'original';
     const suffix = mode === 'tab' ? 'tab' : mode === 'line' ? '320x270' : '';
 
@@ -185,26 +192,28 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
       return resizeFrame(frameSrc(frame), size.w, size.h);
     };
 
-    if (displayList.length === 1) {
-      const src = await buildSrc(displayList[0]);
+    if (chosen.length === 1) {
+      const src = await buildSrc(displayList[chosen[0]]);
       const a = document.createElement('a');
       a.href = src;
-      a.download = `bg-1${suffix ? `-${suffix}` : ''}.png`;
+      a.download = `bg-${String(chosen[0] + 1).padStart(2, '0')}${suffix ? `-${suffix}` : ''}.png`;
       a.click();
       return;
     }
 
     const zip = new JSZip();
-    for (let i = 0; i < displayList.length; i++) {
-      const src = await buildSrc(displayList[i]);
+    for (const idx of chosen) {
+      const frame = displayList[idx];
+      if (!frame) continue;
+      const src = await buildSrc(frame);
       const blob = await (await fetch(src)).blob();
-      zip.file(`bg-${String(i + 1).padStart(2, '0')}${suffix ? `-${suffix}` : ''}.png`, blob);
+      zip.file(`bg-${String(idx + 1).padStart(2, '0')}${suffix ? `-${suffix}` : ''}.png`, blob);
     }
     const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `bg-frames${suffix ? `-${suffix}` : ''}-${displayList.length}張.zip`;
+    a.download = `bg-frames${suffix ? `-${suffix}` : ''}-${chosen.length}張.zip`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -309,13 +318,16 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
 
           <div className="frame-toolbar">
             <div className="action-row" style={{ marginLeft: 'auto', gap: '0.5rem' }}>
-              <button className="button btn-uniform" onClick={() => downloadAll('original')} disabled={displayList.length === 0}>
+              {selected.length > 0 && (
+                <span className="frame-count-text">已選 {selected.length} 張</span>
+              )}
+              <button className="button btn-uniform" onClick={() => downloadSelected('original')} disabled={selected.length === 0}>
                 <FileArchive size={16} /> 下載原圖尺寸
               </button>
-              <button className="button btn-uniform" onClick={() => downloadAll('tab')} disabled={displayList.length === 0}>
+              <button className="button btn-uniform" onClick={() => downloadSelected('tab')} disabled={selected.length === 0}>
                 <Download size={16} /> 下載 tab (96x74)
               </button>
-              <button className="button btn-uniform" onClick={() => downloadAll('line')} disabled={displayList.length === 0}>
+              <button className="button btn-uniform" onClick={() => downloadSelected('line')} disabled={selected.length === 0}>
                 <Download size={16} /> 下載 320x270
               </button>
             </div>
@@ -323,7 +335,10 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
 
           <div className="frame-grid">
             {displayList.map((frame, idx) => (
-              <div key={idx} className="frame-item" style={{ background: getPreviewBgStyle(), cursor: 'pointer' }} onClick={() => setEditTarget(idx)} title="點擊編輯">
+              <div key={idx} className={`frame-item ${selected.includes(idx) ? 'selected' : ''}`} style={{ background: getPreviewBgStyle(), cursor: 'pointer' }} onClick={() => toggleSelect(idx)} title="點擊選取">
+                <div className="frame-select-box" onClick={(e) => { e.stopPropagation(); toggleSelect(idx); }}>
+                  <input type="checkbox" checked={selected.includes(idx)} onChange={() => toggleSelect(idx)} />
+                </div>
                 <img src={results.length > 0 ? frame.processedSrc : (frame.displaySrc || frame.src)} alt={`截圖 ${idx + 1}`} />
                 <span className="frame-index">#{idx + 1}</span>
                 <button className="frame-delete-btn" onClick={(e) => { e.stopPropagation(); handleDeleteFrame(idx); }} title="刪除">
