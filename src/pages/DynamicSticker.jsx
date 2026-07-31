@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Video, ImageIcon, Package, Check } from 'lucide-react';
+import { ArrowLeft, Upload, Video, ImageIcon, Package, Check, AlertTriangle } from 'lucide-react';
 import VideoUploader from '../components/VideoUploader';
 import FrameExtractor from '../components/FrameExtractor';
 import BgRemover from '../components/BgRemover';
 import ApngExporter from '../components/ApngExporter';
+
+const MAX_FRAMES = 20;
 
 const steps = [
   { id: 1, label: '上傳影片', icon: <Upload size={20} /> },
@@ -37,7 +39,21 @@ const DynamicSticker = () => {
     setActiveStep(3);
   };
 
+  const getPackFrameCount = () => processedFrames.length > 0 ? processedFrames.length : frames.length;
+
+  const canEnterStep4 = () => {
+    const count = getPackFrameCount();
+    return count > 0 && count <= MAX_FRAMES;
+  };
+
+  const [packGateError, setPackGateError] = useState('');
+
   const handleGoToStep4 = () => {
+    if (!canEnterStep4()) {
+      setPackGateError(`影格數需不超過 ${MAX_FRAMES} 張，目前 ${getPackFrameCount()} 張`);
+      return;
+    }
+    setPackGateError('');
     setActiveStep(4);
   };
 
@@ -60,9 +76,10 @@ const DynamicSticker = () => {
             onClick={() => {
               if (step.id < activeStep) setActiveStep(step.id);
               else if (step.id === 3 && frames.length > 0) setActiveStep(3);
-              else if (step.id === 4 && processedFrames.length > 0) setActiveStep(4);
+              else if (step.id === 4 && canEnterStep4()) { setPackGateError(''); setActiveStep(4); }
+              else if (step.id === 4) setPackGateError(`影格數需不超過 ${MAX_FRAMES} 張，目前 ${getPackFrameCount()} 張`);
             }}
-            style={{ cursor: (step.id < activeStep || (step.id === 3 && frames.length > 0) || (step.id === 4 && processedFrames.length > 0)) ? 'pointer' : 'default' }}
+            style={{ cursor: (step.id < activeStep || (step.id === 3 && frames.length > 0) || (step.id === 4 && canEnterStep4())) ? 'pointer' : 'default' }}
           >
             <div className="step-circle">
               {activeStep > step.id ? <Check size={20} /> : step.icon}
@@ -73,6 +90,11 @@ const DynamicSticker = () => {
       </div>
 
       <div className="content-area">
+        {packGateError && activeStep < 4 && (
+          <div className="gate-error" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,107,107,0.12)', color: '#ff6b6b', padding: '0.75rem 1rem', borderRadius: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem' }}>
+            <AlertTriangle size={16} /> {packGateError}
+          </div>
+        )}
         {activeStep === 1 && (
           <VideoUploader onVideoReady={handleVideoReady} />
         )}

@@ -34,6 +34,8 @@ const ApngExporter = ({ frames }) => {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [fileSize, setFileSize] = useState(0);
+  const [usedColors, setUsedColors] = useState(0);
+  const [outDims, setOutDims] = useState(null);
   const [error, setError] = useState('');
   const [previewFrames, setPreviewFrames] = useState([]);
   const [frameDelay, setFrameDelay] = useState(0);
@@ -101,7 +103,10 @@ const ApngExporter = ({ frames }) => {
     const loaded = await Promise.all(srcFrames.map(f => loadImg(loadFrameSrc(f))));
     const valid = loaded.filter(img => img.naturalWidth > 0);
     if (valid.length === 0) return;
-    const delay = Math.round((duration * 1000) / valid.length);
+    const totalMs = duration * 1000;
+    const base = Math.floor(totalMs / valid.length);
+    const rem = totalMs % valid.length;
+    const delay = rem > 0 ? base + 1 : base;
     setPreviewFrames(valid);
     setFrameDelay(delay);
     setAnimating(true);
@@ -118,8 +123,9 @@ const ApngExporter = ({ frames }) => {
     try {
       const target = getTargetSize();
       const totalMs = duration * 1000;
-      const delayPerFrame = Math.round(totalMs / srcFrames.length);
-      const delays = Array(srcFrames.length).fill(delayPerFrame);
+      const delayBase = Math.floor(totalMs / srcFrames.length);
+      const delayRemainder = totalMs % srcFrames.length;
+      const delays = Array.from({ length: srcFrames.length }, (_, i) => (i < delayRemainder ? delayBase + 1 : delayBase));
 
       const first = await loadImg(loadFrameSrc(srcFrames[0]));
       let fw = target ? target.w : (first.naturalWidth || 320);
@@ -156,11 +162,15 @@ const ApngExporter = ({ frames }) => {
       let cnum = 0;
       let result = null;
 
-      for (const attempt of [0, 256, 128]) {
-        const buf = UPNG.encode(valid, fw, fh, attempt, validDelays);
+      const encodeBlob = (buffers, w, h, colors, frameDelays) => {
+        const buf = UPNG.encode(buffers, w, h, colors, frameDelays);
         const patched = setApngLoopCount(buf, loopCount, infiniteLoop);
-        const b = new Blob([patched], { type: 'image/png' });
-        if (b.size <= SIZE_LIMIT || attempt === 128 || fw <= 80) {
+        return new Blob([patched], { type: 'image/png' });
+      };
+
+      for (const attempt of [0, 256, 128, 96, 64, 48, 32, 16]) {
+        const b = encodeBlob(valid, fw, fh, attempt, validDelays);
+        if (b.size <= SIZE_LIMIT) {
           result = b;
           cnum = attempt;
           break;
@@ -168,30 +178,40 @@ const ApngExporter = ({ frames }) => {
       }
 
       if (!result) {
-        const shrink = Math.max(0.5, SIZE_LIMIT / (fw * fh * valid.length * 4));
-        const sw = Math.round(fw * Math.sqrt(shrink));
-        const sh = Math.round(fh * Math.sqrt(shrink));
+        let sw = fw;
+        let sh = fh;
+        const MIN_DIM = 32;
+        while (sw > MIN_DIM || sh > MIN_DIM) {
+          sw = Math.max(MIN_DIM, Math.round(sw * 0.8));
+          sh = Math.max(MIN_DIM, Math.round(sh * 0.8));
 
-        const scaledBuffers = [];
-        for (let i = 0; i < valid.length; i++) {
-          const img = await loadImg(loadFrameSrc(srcFrames[i]));
-          const canvas = document.createElement('canvas');
-          canvas.width = sw;
-          canvas.height = sh;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, sw, sh);
-          scaledBuffers.push(ctx.getImageData(0, 0, sw, sh).data.buffer);
+          const scaledBuffers = [];
+          for (let i = 0; i < valid.length; i++) {
+            const img = await loadImg(loadFrameSrc(srcFrames[i]));
+            const canvas = document.createElement('canvas');
+            canvas.width = sw;
+            canvas.height = sh;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, sw, sh);
+            scaledBuffers.push(ctx.getImageData(0, 0, sw, sh).data.buffer);
+          }
+
+          const b = encodeBlob(scaledBuffers, sw, sh, 16, validDelays);
+          if (b.size <= SIZE_LIMIT || (sw === MIN_DIM && sh === MIN_DIM)) {
+            result = b;
+            cnum = 16;
+            fw = sw;
+            fh = sh;
+            break;
+          }
         }
-
-        const buf = UPNG.encode(scaledBuffers, sw, sh, 128, validDelays);
-        const patched = setApngLoopCount(buf, loopCount, infiniteLoop);
-        result = new Blob([patched], { type: 'image/png' });
-        fw = sw; fh = sh;
       }
 
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(URL.createObjectURL(result));
       setFileSize(result.size);
+      setUsedColors(cnum);
+      setOutDims({ w: fw, h: fh });
       startPreviewAnimation();
     } catch (err) {
       setError(`合成失敗：${err.message}`);
@@ -300,7 +320,7 @@ const ApngExporter = ({ frames }) => {
             {previewUrl && (
               <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                  檔案大小：{formatSize(fileSize)} | {frames.length} 幀 | {outputSize === 'line' ? '320×270' : outputSize === 'auto' ? '原始' : `${customW}×${customH}`}
+                  檔案大小：{formatSize(fileSize)} | {frames.length} 幀 | {outDims ? `${outDims.w}×${outDims.h}` : '—'} | {usedColors ? `${usedColors} 色` : '全彩'}
                 </div>
                 <div className="preview-controls">
                   <label className="toggle-unit" style={{ justifyContent: 'center' }}>
