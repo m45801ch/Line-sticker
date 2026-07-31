@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { ImageIcon, Sparkles, Loader2, Edit3, Undo2, Package, Trash2, Upload } from 'lucide-react';
+import { ImageIcon, Sparkles, Loader2, Edit3, Undo2, Package, Trash2, Upload, Download, FileArchive } from 'lucide-react';
+import JSZip from 'jszip';
 import FrameEditor from './FrameEditor';
 
 const hexToRgb = (hex) => {
@@ -152,6 +153,62 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
     ? results.filter((_, i) => !deletedIndices.includes(i))
     : allFrames.filter((_, i) => !deletedIndices.includes(i));
 
+  const TAB_W = 96;
+  const TAB_H = 74;
+  const LINE_W = 320;
+  const LINE_H = 270;
+
+  const frameSrc = (frame) => frame.processedSrc || frame.displaySrc || frame.src;
+
+  const resizeFrame = (src, w, h) => new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(src);
+    img.src = src;
+  });
+
+  const downloadAll = async (mode) => {
+    if (displayList.length === 0) return;
+    const isOriginal = mode === 'original';
+    const suffix = mode === 'tab' ? 'tab' : mode === 'line' ? '320x270' : '';
+
+    const buildSrc = async (frame) => {
+      if (isOriginal) return frameSrc(frame);
+      const size = mode === 'tab' ? { w: TAB_W, h: TAB_H } : { w: LINE_W, h: LINE_H };
+      return resizeFrame(frameSrc(frame), size.w, size.h);
+    };
+
+    if (displayList.length === 1) {
+      const src = await buildSrc(displayList[0]);
+      const a = document.createElement('a');
+      a.href = src;
+      a.download = `bg-1${suffix ? `-${suffix}` : ''}.png`;
+      a.click();
+      return;
+    }
+
+    const zip = new JSZip();
+    for (let i = 0; i < displayList.length; i++) {
+      const src = await buildSrc(displayList[i]);
+      const blob = await (await fetch(src)).blob();
+      zip.file(`bg-${String(i + 1).padStart(2, '0')}${suffix ? `-${suffix}` : ''}.png`, blob);
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bg-frames${suffix ? `-${suffix}` : ''}-${displayList.length}張.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
     <div className="glass-panel">
@@ -249,6 +306,20 @@ const BgRemover = ({ frames, onFramesProcessed, onGoToStep4 }) => {
           <h4 style={{ marginBottom: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '1rem' }}>
             {results.length > 0 ? `去背結果（${results.length} 張）` : `原始截圖（${allFrames.length} 張）`}
           </h4>
+
+          <div className="frame-toolbar">
+            <div className="action-row" style={{ marginLeft: 'auto', gap: '0.5rem' }}>
+              <button className="button btn-uniform" onClick={() => downloadAll('original')} disabled={displayList.length === 0}>
+                <FileArchive size={16} /> 下載原圖尺寸
+              </button>
+              <button className="button btn-uniform" onClick={() => downloadAll('tab')} disabled={displayList.length === 0}>
+                <Download size={16} /> 下載 tab (96x74)
+              </button>
+              <button className="button btn-uniform" onClick={() => downloadAll('line')} disabled={displayList.length === 0}>
+                <Download size={16} /> 下載 320x270
+              </button>
+            </div>
+          </div>
 
           <div className="frame-grid">
             {displayList.map((frame, idx) => (
