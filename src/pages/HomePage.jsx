@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Image, Film } from 'lucide-react';
+import { Image, Film, Scissors } from 'lucide-react';
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -28,6 +28,15 @@ const HomePage = () => {
           </div>
           <h2>動態貼圖製作</h2>
           <p>從影片製作動態 LINE 貼圖，擷取影格到去背打包</p>
+          <span className="home-card-link">開始製作 →</span>
+        </div>
+
+        <div className="home-card" onClick={() => navigate('/slicer')}>
+          <div className="home-card-icon">
+            <Scissors size={48} />
+          </div>
+          <h2>動態貼圖切割</h2>
+          <p>上傳 1920x1080 影片，自動切割為 24 格 LINE 動態貼圖</p>
           <span className="home-card-link">開始製作 →</span>
         </div>
       </div>
