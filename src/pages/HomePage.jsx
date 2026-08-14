@@ -26,7 +26,7 @@ const HomePage = () => {
           <div className="home-card-icon">
             <Film size={48} />
           </div>
-          <h2>動態貼圖製作</h2>
+          <h2>單張動態貼圖製作</h2>
           <p>從影片製作動態 LINE 貼圖，擷取影格到去背打包</p>
           <span className="home-card-link">開始製作 →</span>
         </div>
@@ -35,8 +35,8 @@ const HomePage = () => {
           <div className="home-card-icon">
             <Scissors size={48} />
           </div>
-          <h2>動態貼圖切割</h2>
-          <p>上傳 1920x1080 影片，自動切割為 24 格 LINE 動態貼圖</p>
+          <h2>多張動態貼圖製作</h2>
+          <p>上傳影片自動切割為多格 LINE 動態貼圖</p>
           <span className="home-card-link">開始製作 →</span>
         </div>
       </div>

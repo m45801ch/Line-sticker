@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Upload, Video, ImageIcon, Package, Check, AlertTriangle } from 'lucide-react';
 import VideoUploader from '../components/VideoUploader';
 import FrameExtractor from '../components/FrameExtractor';
 import BgRemover from '../components/BgRemover';
 import ApngExporter from '../components/ApngExporter';
+import { MAX_DURATION } from '../slicer/VideoProcessor';
 
 const MAX_FRAMES = 20;
 
@@ -17,8 +18,12 @@ const steps = [
 
 const DynamicSticker = () => {
   const navigate = useNavigate();
-  const [activeStep, setActiveStep] = useState(1);
-  const [videoInfo, setVideoInfo] = useState(null);
+  const location = useLocation();
+  const sliced = location.state?.slicedVideo;
+  const [activeStep, setActiveStep] = useState(sliced?.url ? 2 : 1);
+  const [videoInfo, setVideoInfo] = useState(sliced?.url
+    ? { url: sliced.url, file: { name: sliced.name || 'sliced.mp4', type: 'video/mp4' }, duration: MAX_DURATION }
+    : null);
   const [frames, setFrames] = useState([]);
   const [processedFrames, setProcessedFrames] = useState([]);
 
@@ -69,10 +74,10 @@ const DynamicSticker = () => {
   return (
     <div className="app-container">
       <div className="page-header">
-        <button className="back-button" onClick={() => navigate('/')}>
+        <button className="back-button" onClick={() => navigate(-1)}>
           <ArrowLeft size={20} />
         </button>
-        <h1>動態貼圖製作</h1>
+        <h1>單張動態貼圖製作</h1>
       </div>
 
       <div className="stepper">

@@ -206,7 +206,7 @@ body {
   width: 100%;
   background: var(--panel-bg);
   border: 1px solid var(--border-color);
-  color: white;
+  color: var(--text-primary);
   padding: 0.75rem;
   border-radius: 0.5rem;
   outline: none;
@@ -951,6 +951,11 @@ body {
   left: 50%;
   transform: translateX(-50%);
   z-index: 2;
+  width: 1.6rem;
+  height: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0;
   transition: opacity 0.2s;
 }
@@ -961,10 +966,34 @@ body {
 }
 
 .frame-select-box input[type="checkbox"] {
-  width: 1.05rem;
-  height: 1.05rem;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
   cursor: pointer;
-  accent-color: var(--primary-color);
+  border: 2px solid var(--text-secondary);
+  border-radius: 3px;
+  background: var(--panel-bg);
+  position: relative;
+  box-sizing: border-box;
+}
+
+.frame-select-box input[type="checkbox"]:checked {
+  border-color: var(--primary-color);
+  background: var(--primary-color);
+}
+
+.frame-select-box input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.4rem;
+  height: 0.24rem;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: translate(-50%, -60%) rotate(45deg);
 }
 
 .frame-item.selected {
