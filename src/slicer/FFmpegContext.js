@@ -26,7 +26,42 @@ const emitProgress = (name, received, total, done) => {
   });
 };
 
+// 從 .gz 檔下載並解壓縮（Cloudflare Pages 單檔上限 25 MiB，wasm 以 gzip 存放）
+const fetchGzBlobURL = async (gzUrl, mimeType, label) => {
+  const resp = await fetch(gzUrl);
+  if (!resp.ok) throw new Error(`下載失敗：${gzUrl} (${resp.status})`);
+  const total = parseInt(resp.headers.get('Content-Length') || '-1', 10);
+  let received = 0;
+  const reader = resp.body?.getReader();
+  const chunks = [];
+  if (reader) {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      emitProgress(label, received, total, false);
+    }
+  }
+  emitProgress(label, received, total, true);
+
+  const compressed = new Uint8Array(received);
+  let pos = 0;
+  for (const c of chunks) { compressed.set(c, pos); pos += c.length; }
+
+  // 解壓 gzip
+  const ds = new DecompressionStream('gzip');
+  const stream = new Blob([compressed]).stream().pipeThrough(ds);
+  const decompressed = await new Response(stream).arrayBuffer();
+  const blob = new Blob([decompressed], { type: mimeType });
+  return URL.createObjectURL(blob);
+};
+
 const toBlobURLWithProgress = async (url, mimeType, label) => {
+  // .gz 結尾的檔先解壓
+  if (url.endsWith('.gz')) {
+    return fetchGzBlobURL(url, mimeType, label);
+  }
   return toBlobURL(url, mimeType, true, ({ received, total, done }) => {
     emitProgress(label, received, total, done);
   });
@@ -96,13 +131,13 @@ export const getFFmpeg = async (mode = 'auto') => {
       // 多執行緒版本（SharedArrayBuffer 加速）
       loadConfig = {
         coreURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core-mt.js`, 'text/javascript', 'ffmpeg-core-mt.js'),
-        wasmURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core-mt.wasm`, 'application/wasm', 'ffmpeg-core-mt.wasm'),
+        wasmURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core-mt.wasm.gz`, 'application/wasm', 'ffmpeg-core-mt.wasm'),
         workerURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core-mt.worker.js`, 'text/javascript', 'ffmpeg-core-mt.worker.js'),
       };
     } else {
       loadConfig = {
         coreURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript', 'ffmpeg-core.js'),
-        wasmURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm', 'ffmpeg-core.wasm'),
+        wasmURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core.wasm.gz`, 'application/wasm', 'ffmpeg-core.wasm'),
       };
     }
 
@@ -119,7 +154,7 @@ export const getFFmpeg = async (mode = 'auto') => {
         loadedMode = 'single';
         await ffmpeg.load({
           coreURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript', 'ffmpeg-core.js'),
-          wasmURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm', 'ffmpeg-core.wasm'),
+          wasmURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core.wasm.gz`, 'application/wasm', 'ffmpeg-core.wasm'),
         });
       } else {
         throw err;
