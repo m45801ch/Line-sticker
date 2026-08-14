@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Temporary cloned repos (gitlinks removed, not part of the project)
+src/temp_clone/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
