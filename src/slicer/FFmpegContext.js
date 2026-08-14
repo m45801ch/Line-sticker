@@ -128,16 +128,18 @@ export const getFFmpeg = async (mode = 'auto') => {
 
     let loadConfig;
     if (target === 'mt') {
-      // 多執行緒版本（SharedArrayBuffer 加速）
+      // 多執行緒版本（SharedArrayBuffer 加速）。
+      // 使用 toBlobURL：主執行緒 fetch 取得檔案 → 轉 blob URL，避免 worker importScripts
+      // 觸發 Vite transform（public 檔不可被當成模組 import）。
       loadConfig = {
-        coreURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core-mt.js`, 'text/javascript', 'ffmpeg-core-mt.js'),
-        wasmURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core-mt.wasm.gz`, 'application/wasm', 'ffmpeg-core-mt.wasm'),
-        workerURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core-mt.worker.js`, 'text/javascript', 'ffmpeg-core-mt.worker.js'),
+        coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core-mt.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core-mt.wasm`, 'application/wasm'),
+        workerURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core-mt.worker.js`, 'text/javascript'),
       };
     } else {
       loadConfig = {
-        coreURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript', 'ffmpeg-core.js'),
-        wasmURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core.wasm.gz`, 'application/wasm', 'ffmpeg-core.wasm'),
+        coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
       };
     }
 
@@ -153,8 +155,8 @@ export const getFFmpeg = async (mode = 'auto') => {
         loadProgressHandler?.({ type: 'ffmpeg-log', message: `MT core 載入失敗（${err.message}），退回單執行緒` });
         loadedMode = 'single';
         await ffmpeg.load({
-          coreURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript', 'ffmpeg-core.js'),
-          wasmURL: await toBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core.wasm.gz`, 'application/wasm', 'ffmpeg-core.wasm'),
+          coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
+          wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
         });
       } else {
         throw err;

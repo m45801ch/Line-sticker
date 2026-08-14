@@ -205,8 +205,8 @@ const SlicerApp = ({ onBack }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,165,0,0.12)', color: '#b26a00', padding: '0.6rem 0.9rem', borderRadius: '0.5rem', marginBottom: '1rem', fontSize: '0.8rem' }}>
           <AlertTriangle size={15} />
           <span>
-            目前未啟用 COOP/COEP 跨源隔離，多執行緒 (MT) 模式可能無法運作。
-            若需 SharedArrayBuffer 加速，請於伺服器設定 Header：<code>Cross-Origin-Opener-Policy: same-origin</code> 與 <code>Cross-Origin-Embedder-Policy: require-corp</code>，或改用單執行緒模式。
+            目前未啟用 COOP/COEP 跨源隔離，將<strong>自動切換為單執行緒模式</strong>（功能正常，僅較慢）。
+            若要使用 SharedArrayBuffer 加速，請於伺服器設定 Header：<code>Cross-Origin-Opener-Policy: same-origin</code> 與 <code>Cross-Origin-Embedder-Policy: require-corp</code> 後重新整理頁面。
           </span>
         </div>
       )}
