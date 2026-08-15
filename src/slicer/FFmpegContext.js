@@ -1,5 +1,4 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { toBlobURL } from '@ffmpeg/util';
 
 let ffmpegPromise = null;
 let loadProgressHandler = null;
@@ -14,6 +13,42 @@ export const onFFmpegEvent = (handler) => {
 
 // 自行託管在 public/ffmpeg/ 的 FFmpeg core（部署時隨網站一起送出，無需外部 CDN）
 const CORE_BASE = `${import.meta.env.BASE_URL}ffmpeg`;
+
+/**
+ * 下載檔案並轉成 blob URL。
+ * 自訂實作：只讀取一次 response body，避免 @ffmpeg/util 的 downloadWithProgress
+ * 在部分 CDN（如 EdgeOne）上「body stream already read」的問題。
+ * 支援進度回報。
+ */
+const downloadToBlobURL = async (url, mimeType, label) => {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`下載失敗：${url} (${resp.status})`);
+  const total = Number(resp.headers.get('Content-Length')) || 0;
+
+  if (resp.body && typeof resp.body.getReader === 'function') {
+    const reader = resp.body.getReader();
+    const chunks = [];
+    let received = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      loadProgressHandler?.({ type: 'ffmpeg-download', name: label, received, total, done: false });
+    }
+    const buf = new Uint8Array(received);
+    let pos = 0;
+    for (const c of chunks) { buf.set(c, pos); pos += c.length; }
+    loadProgressHandler?.({ type: 'ffmpeg-download', name: label, received, total, done: true });
+    const blob = new Blob([buf], { type: mimeType });
+    return URL.createObjectURL(blob);
+  }
+
+  const buf = await resp.arrayBuffer();
+  loadProgressHandler?.({ type: 'ffmpeg-download', name: label, received: buf.byteLength, total: buf.byteLength, done: true });
+  const blob = new Blob([buf], { type: mimeType });
+  return URL.createObjectURL(blob);
+};
 
 const withTimeout = (promise, ms, label) => {
   let timer;
@@ -77,17 +112,17 @@ export const getFFmpeg = async (mode = 'auto') => {
     let loadConfig;
     if (target === 'mt') {
       // 多執行緒版本（SharedArrayBuffer 加速）。
-      // 使用 toBlobURL：主執行緒 fetch 取得檔案 → 轉 blob URL，避免 worker importScripts
+      // 使用 blob URL：主執行緒 fetch 取得檔案 → 轉 blob URL，避免 worker importScripts
       // 觸發 Vite transform（public 檔不可被當成模組 import）。
       loadConfig = {
-        coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core-mt.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core-mt.wasm`, 'application/wasm'),
-        workerURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core-mt.worker.js`, 'text/javascript'),
+        coreURL: await downloadToBlobURL(`${CORE_BASE}/ffmpeg-core-mt.js`, 'text/javascript', 'ffmpeg-core-mt.js'),
+        wasmURL: await downloadToBlobURL(`${CORE_BASE}/ffmpeg-core-mt.wasm`, 'application/wasm', 'ffmpeg-core-mt.wasm'),
+        workerURL: await downloadToBlobURL(`${CORE_BASE}/ffmpeg-core-mt.worker.js`, 'text/javascript', 'ffmpeg-core-mt.worker.js'),
       };
     } else {
       loadConfig = {
-        coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
+        coreURL: await downloadToBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript', 'ffmpeg-core.js'),
+        wasmURL: await downloadToBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm', 'ffmpeg-core.wasm'),
       };
     }
 
@@ -103,8 +138,8 @@ export const getFFmpeg = async (mode = 'auto') => {
         loadProgressHandler?.({ type: 'ffmpeg-log', message: `MT core 載入失敗（${err.message}），退回單執行緒` });
         loadedMode = 'single';
         await ffmpeg.load({
-          coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
-          wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
+          coreURL: await downloadToBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript', 'ffmpeg-core.js'),
+          wasmURL: await downloadToBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm', 'ffmpeg-core.wasm'),
         });
       } else {
         throw err;
