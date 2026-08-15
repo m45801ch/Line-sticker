@@ -16,39 +16,35 @@ const CORE_BASE = `${import.meta.env.BASE_URL}ffmpeg`;
 
 /**
  * 下載檔案並轉成 blob URL。
- * 自訂實作：只讀取一次 response body，避免 @ffmpeg/util 的 downloadWithProgress
- * 在部分 CDN（如 EdgeOne）上「body stream already read」的問題。
+ * 使用 XMLHttpRequest（而非 fetch）：XHR 無「Response body stream」概念，
+ * 可避免部分 CDN（如 EdgeOne）上「body stream already read」錯誤。
  * 支援進度回報。
  */
-const downloadToBlobURL = async (url, mimeType, label) => {
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`下載失敗：${url} (${resp.status})`);
-  const total = Number(resp.headers.get('Content-Length')) || 0;
+const downloadToBlobURL = (url, mimeType, label) => new Promise((resolve, reject) => {
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.responseType = 'arraybuffer';
 
-  if (resp.body && typeof resp.body.getReader === 'function') {
-    const reader = resp.body.getReader();
-    const chunks = [];
-    let received = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      received += value.length;
-      loadProgressHandler?.({ type: 'ffmpeg-download', name: label, received, total, done: false });
+  xhr.onprogress = (e) => {
+    if (e.lengthComputable) {
+      loadProgressHandler?.({ type: 'ffmpeg-download', name: label, received: e.loaded, total: e.total, done: false });
     }
-    const buf = new Uint8Array(received);
-    let pos = 0;
-    for (const c of chunks) { buf.set(c, pos); pos += c.length; }
-    loadProgressHandler?.({ type: 'ffmpeg-download', name: label, received, total, done: true });
-    const blob = new Blob([buf], { type: mimeType });
-    return URL.createObjectURL(blob);
-  }
+  };
 
-  const buf = await resp.arrayBuffer();
-  loadProgressHandler?.({ type: 'ffmpeg-download', name: label, received: buf.byteLength, total: buf.byteLength, done: true });
-  const blob = new Blob([buf], { type: mimeType });
-  return URL.createObjectURL(blob);
-};
+  xhr.onload = () => {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      const buf = xhr.response;
+      loadProgressHandler?.({ type: 'ffmpeg-download', name: label, received: buf.byteLength, total: buf.byteLength, done: true });
+      const blob = new Blob([buf], { type: mimeType });
+      resolve(URL.createObjectURL(blob));
+    } else {
+      reject(new Error(`下載失敗：${url} (${xhr.status})`));
+    }
+  };
+
+  xhr.onerror = () => reject(new Error(`下載失敗：${url}`));
+  xhr.send();
+});
 
 const withTimeout = (promise, ms, label) => {
   let timer;
