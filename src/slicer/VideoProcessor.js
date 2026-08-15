@@ -356,16 +356,16 @@ export const extractProcessedFrameDataUrls = async (videoUrl, settings, frameCou
 };
 
 /**
- * 對單支切割影片執行自動化：截取影格 → 去背 → 打包 APNG（強制 ≤ 1MB）。
+ * 將已去背處理後的影格（dataURL 陣列）打包成 APNG（強制 ≤ 1MB）。
  * 壓縮策略：先降色彩數，仍超標則逐步縮小尺寸。
+ * @param {string[]} processedFrames 已去背的影格 dataURL 陣列
+ * @returns {Promise<{apng:Blob,size:number}>}
  */
-export const autoProcessClipToApng = async (videoUrl, settings, frameCount = AUTO_FRAME_COUNT) => {
-  const processed = await extractProcessedFrameDataUrls(videoUrl, settings, frameCount);
-
+export const buildApngFromFrameDataUrls = async (processedFrames) => {
   const totalMs = MAX_DURATION * 1000;
-  const delayBase = Math.floor(totalMs / processed.length);
-  const delayRemainder = totalMs % processed.length;
-  const delays = Array.from({ length: processed.length }, (_, i) => (i < delayRemainder ? delayBase + 1 : delayBase));
+  const delayBase = Math.floor(totalMs / processedFrames.length);
+  const delayRemainder = totalMs % processedFrames.length;
+  const delays = Array.from({ length: processedFrames.length }, (_, i) => (i < delayRemainder ? delayBase + 1 : delayBase));
 
   const SIZE_LIMIT = 1024 * 1024;
 
@@ -390,11 +390,11 @@ export const autoProcessClipToApng = async (videoUrl, settings, frameCount = AUT
 
   // 1. 原始尺寸先降色彩數
   const baseBuffers = [];
-  for (const src of processed) {
+  for (const src of processedFrames) {
     const buf = await loadToBuffer(src, LINE_TARGET_W, LINE_TARGET_H);
     if (buf) baseBuffers.push(buf);
   }
-  if (baseBuffers.length === 0) throw new Error('去背後無有效影格');
+  if (baseBuffers.length === 0) throw new Error('無有效影格');
 
   let blob = null;
   for (const cnum of [0, 256, 128, 96, 64, 48, 32, 16]) {
@@ -412,7 +412,7 @@ export const autoProcessClipToApng = async (videoUrl, settings, frameCount = AUT
       sh = Math.max(MIN_DIM, Math.round(sh * 0.8));
 
       const scaledBuffers = [];
-      for (const src of processed) {
+      for (const src of processedFrames) {
         const buf = await loadToBuffer(src, sw, sh);
         if (buf) scaledBuffers.push(buf);
       }
@@ -428,9 +428,24 @@ export const autoProcessClipToApng = async (videoUrl, settings, frameCount = AUT
 };
 
 /**
- * 批次自動化處理多支切割影片，完成後打包 ZIP。
+ * 對單支切割影片執行自動化：截取影格 → 去背 → 打包 APNG（強制 ≤ 1MB）。
  */
-export const autoProcessClipsToZip = async (clips, settings, frameCount, onProgress) => {
+export const autoProcessClipToApng = async (videoUrl, settings, frameCount = AUTO_FRAME_COUNT) => {
+  const processed = await extractProcessedFrameDataUrls(videoUrl, settings, frameCount);
+  return buildApngFromFrameDataUrls(processed);
+};
+
+/**
+ * 批次自動化處理多支切割影片，完成後打包 ZIP。
+ * 若提供 processedMap（clip index → 已編輯的去背影格 dataURL 陣列），
+ * 則使用已保留/編輯的影格製作 APNG；否則重新截取影格 + 去背。
+ * @param {Array<{url:string,name:string,index:number}>} clips
+ * @param {object} settings 去背參數
+ * @param {number} frameCount
+ * @param {(info:{done:number,total:number,name:string})=>void} onProgress
+ * @param {Object<string, string[]>} [processedMap]
+ */
+export const autoProcessClipsToZip = async (clips, settings, frameCount, onProgress, processedMap = {}) => {
   const zip = new JSZip();
   const total = clips.length;
   let overLimit = 0;
@@ -438,7 +453,15 @@ export const autoProcessClipsToZip = async (clips, settings, frameCount, onProgr
   for (let i = 0; i < total; i++) {
     const clip = clips[i];
     onProgress?.({ done: i, total, name: clip.name, stage: 'processing' });
-    const { apng, size } = await autoProcessClipToApng(clip.url, settings, frameCount);
+    let apng, size;
+    const keptFrames = processedMap[clip.index];
+    if (keptFrames && keptFrames.length > 0) {
+      const r = await buildApngFromFrameDataUrls(keptFrames);
+      apng = r.apng; size = r.size;
+    } else {
+      const r = await autoProcessClipToApng(clip.url, settings, frameCount);
+      apng = r.apng; size = r.size;
+    }
     if (size > 1024 * 1024) overLimit++;
     const base = clip.name.replace(/\.mp4$/i, '');
     zip.file(`${base}.apng`, await apng.arrayBuffer());
