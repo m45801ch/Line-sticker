@@ -1,8 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ImageIcon, Sparkles, Loader2, Edit3, Undo2, Package, Trash2, Upload, Download, FileArchive } from 'lucide-react';
 import JSZip from 'jszip';
 import FrameEditor from './FrameEditor';
-import { applyChromaKey } from '../utils/chromaKey';
+import { applyChromaKey, autoDetectBgFromImage } from '../utils/chromaKey';
 
 const colorPresets = ['#00FF00', '#0000FF', '#FFFFFF', '#000000'];
 
@@ -26,6 +26,18 @@ const BgRemover = ({ frames, initialResults = [], onFramesProcessed, onGoToStep4
   const dragIndexRef = useRef(null);
 
   const allFrames = frames.length > 0 ? [...frames, ...extraFrames] : extraFrames;
+
+  const autoRanRef = useRef(false);
+
+  // 進入去背頁面（進行去背）時，若智慧去背開啟且尚無結果，自動偵測並去背
+  useEffect(() => {
+    if (autoRanRef.current) return;
+    if (enableSmartRemoval && allFrames.length > 0 && results.length === 0) {
+      autoRanRef.current = true;
+      processAll();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allFrames.length, enableSmartRemoval]);
 
   const handleUpload = (e) => {
     const files = Array.from(e.target.files || []);
@@ -57,6 +69,29 @@ const BgRemover = ({ frames, initialResults = [], onFramesProcessed, onGoToStep4
     setIsProcessing(true);
     await new Promise(r => setTimeout(r, 50));
 
+    // 智慧去背開啟時，先自動偵測參數
+    let settings = { bgColor, tolerance, smoothness, enableDespill, despillStrength };
+    if (enableSmartRemoval) {
+      const first = sourceFrames[0];
+      try {
+        const detected = await autoDetectBgFromImage(first.displaySrc || first.src);
+        setBgColor(detected.bgColor);
+        setTolerance(detected.tolerance);
+        setSmoothness(detected.smoothness);
+        setEnableDespill(detected.enableDespill);
+        setDespillStrength(detected.despillStrength);
+        settings = {
+          bgColor: detected.bgColor,
+          tolerance: detected.tolerance,
+          smoothness: detected.smoothness,
+          enableDespill: detected.enableDespill,
+          despillStrength: detected.despillStrength,
+        };
+      } catch {
+        // 偵測失敗則沿用預設值
+      }
+    }
+
     const processed = await Promise.all(sourceFrames.map((frame) => {
       return new Promise((resolve) => {
         const img = new Image();
@@ -67,12 +102,7 @@ const BgRemover = ({ frames, initialResults = [], onFramesProcessed, onGoToStep4
           canvas.height = img.naturalHeight;
           ctx.drawImage(img, 0, 0);
 
-          if (enableSmartRemoval) {
-            applyChromaKey(ctx, canvas.width, canvas.height, {
-              bgColor, tolerance, smoothness,
-              enableDespill, despillStrength,
-            });
-          }
+          applyChromaKey(ctx, canvas.width, canvas.height, settings);
 
           resolve({ ...frame, processedSrc: canvas.toDataURL('image/png') });
         };
@@ -284,7 +314,7 @@ const BgRemover = ({ frames, initialResults = [], onFramesProcessed, onGoToStep4
               {enableDespill && (
                 <div className="slider-uniform" style={{ maxWidth: '140px' }}>
                   <label>強度 <span>{despillStrength}%</span></label>
-                  <input type="range" min="0" max="200" value={despillStrength} onChange={(e) => setDespillStrength(parseInt(e.target.value))} />
+                  <input type="range" min="0" max="200" value={despillStrength} onChange={(e) => { setDespillStrength(parseInt(e.target.value)); setEnableSmartRemoval(false); }} />
                 </div>
               )}
               <div className="preview-bg-bar" style={{ marginLeft: 'auto' }}>
@@ -316,11 +346,11 @@ const BgRemover = ({ frames, initialResults = [], onFramesProcessed, onGoToStep4
               </div>
               <div className="slider-uniform">
                 <label>容差度 <span>{tolerance}</span></label>
-                <input type="range" min="0" max="255" value={tolerance} onChange={(e) => setTolerance(parseInt(e.target.value))} />
+                <input type="range" min="0" max="255" value={tolerance} onChange={(e) => { setTolerance(parseInt(e.target.value)); setEnableSmartRemoval(false); }} />
               </div>
               <div className="slider-uniform">
                 <label>平滑度 <span>{smoothness}</span></label>
-                <input type="range" min="0" max="20" value={smoothness} onChange={(e) => setSmoothness(parseInt(e.target.value))} />
+                <input type="range" min="0" max="20" value={smoothness} onChange={(e) => { setSmoothness(parseInt(e.target.value)); setEnableSmartRemoval(false); }} />
               </div>
               <div className="btn-group">
                 <button className="button btn-uniform" onClick={() => uploadRef.current?.click()}>
