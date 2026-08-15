@@ -179,7 +179,7 @@ export const processAllAndZip = async (videoFile, vLines, hLines, onProgress) =>
   for (let i = 0; i < total; i++) {
     onProgress?.({ done: i, total, cell: i + 1, stage: 'processing' });
     const buf = await processCell(i, vLines, hLines);
-    const name = `cell_${String(i + 1).padStart(2, '0')}.apng`;
+    const name = `cell_${String(i + 1).padStart(2, '0')}.png`;
     zip.file(name, buf);
     onProgress?.({ done: i + 1, total, cell: i + 1, stage: 'done' });
   }
@@ -464,7 +464,7 @@ export const autoProcessClipsToZip = async (clips, settings, frameCount, onProgr
     }
     if (size > 1024 * 1024) overLimit++;
     const base = clip.name.replace(/\.mp4$/i, '');
-    zip.file(`${base}.apng`, await apng.arrayBuffer());
+    zip.file(`${base}.png`, await apng.arrayBuffer());
     onProgress?.({ done: i + 1, total, name: clip.name, stage: 'done' });
   }
 
