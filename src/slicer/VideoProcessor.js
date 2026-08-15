@@ -356,7 +356,21 @@ export const extractProcessedFrameDataUrls = async (videoUrl, settings, frameCou
 };
 
 /**
- * 將已去背處理後的影格（dataURL 陣列）打包成 APNG（強制 ≤ 1MB）。
+ * 設定 APNG 循環次數（num_plays）。LINE 動態貼圖要求單次播放（1）。
+ */
+const setApngLoopCount = (buffer, count) => {
+  const data = new Uint8Array(buffer);
+  for (let i = 0; i < data.length - 20; i++) {
+    if (data[i] === 0x61 && data[i+1] === 0x63 && data[i+2] === 0x54 && data[i+3] === 0x4c) {
+      data[i+11] = count;
+      break;
+    }
+  }
+  return data.buffer;
+};
+
+/**
+ * 將已去背處理後的影格（dataURL 陣列）打包成 APNG（強制 ≤ 1MB、單次播放）。
  * 壓縮策略：先降色彩數，仍超標則逐步縮小尺寸。
  * @param {string[]} processedFrames 已去背的影格 dataURL 陣列
  * @returns {Promise<{apng:Blob,size:number}>}
@@ -384,7 +398,7 @@ export const buildApngFromFrameDataUrls = async (processedFrames) => {
   });
 
   const encodeBlob = (buffers, w, h, colors, frameDelays) => {
-    const buf = UPNG.encode(buffers, w, h, colors, frameDelays);
+    const buf = setApngLoopCount(UPNG.encode(buffers, w, h, colors, frameDelays), 1);
     return new Blob([buf], { type: 'image/png' });
   };
 
