@@ -2,6 +2,5 @@
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: require-corp
 
-/ffmpeg/*.wasm.gz
-  Content-Type: application/octet-stream
-  Content-Encoding: identity
+/ffmpeg/*.wasm
+  Content-Type: application/wasm
